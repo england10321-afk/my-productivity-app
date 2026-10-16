@@ -33,6 +33,7 @@ export async function addCategory(name: string, type: 'todo' | 'note' = 'todo'):
       .single()
 
     if (error) {
+      alert(`[카테고리 추가 실패]\n${error.message}`)
       console.error('addCategory error:', error)
       return null
     }
@@ -51,6 +52,7 @@ export async function updateCategory(id: string, name: string): Promise<boolean>
       .eq('id', id)
 
     if (error) {
+      alert(`[카테고리 수정 실패]\n${error.message}`)
       console.error('updateCategory error:', error)
       return false
     }
@@ -69,6 +71,7 @@ export async function deleteCategory(id: string): Promise<boolean> {
       .eq('id', id)
 
     if (error) {
+      alert(`[카테고리 삭제 실패]\n${error.message}`)
       console.error('deleteCategory error:', error)
       return false
     }
@@ -129,6 +132,7 @@ export async function addTodo(
       .single()
 
     if (error) {
+      alert(`[할 일 추가 실패]\n${error.message}`)
       console.error('addTodo error:', error)
       return null
     }
@@ -221,6 +225,7 @@ export async function fetchNotes(): Promise<Note[]> {
 
     if (error) {
       console.error('fetchNotes error:', error)
+      alert(`[노트 불러오기 실패]\n${error.message}\nSupabase 테이블 생성을 확인해 주세요.`)
       return []
     }
     return data || []
@@ -249,6 +254,7 @@ export async function addNote(
       .single()
 
     if (error) {
+      alert(`[노트 저장 실패]\n${error.message}`)
       console.error('addNote error:', error)
       return null
     }
@@ -274,6 +280,7 @@ export async function updateNote(
       .single()
 
     if (error) {
+      alert(`[노트 수정 실패]\n${error.message}`)
       console.error('updateNote error:', error)
       return null
     }
@@ -289,6 +296,7 @@ export async function deleteNote(id: string): Promise<boolean> {
     const { error } = await supabase.from('notes').delete().eq('id', id)
 
     if (error) {
+      alert(`[노트 삭제 실패]\n${error.message}`)
       console.error('deleteNote error:', error)
       return false
     }
@@ -300,15 +308,83 @@ export async function deleteNote(id: string): Promise<boolean> {
 }
 
 // ==========================================
-// 4. 데이터 백업 & 복원 (Export / Import)
+// 4. 타임블록 (Time Blocks)
+// ==========================================
+
+export const fetchTimeBlocks = async (date?: string) => {
+  try {
+    let query = supabase.from('time_blocks').select('*')
+
+    if (date) {
+      query = query.eq('date', date)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      console.error('fetchTimeBlocks error:', error.message || JSON.stringify(error))
+      return []
+    }
+
+    return data || []
+  } catch (err) {
+    console.error('fetchTimeBlocks exception:', err)
+    return []
+  }
+}
+
+export async function addTimeBlock(
+  title: string,
+  startHour: number,
+  endHour: number,
+  color: string
+) {
+  try {
+    const { data, error } = await supabase
+      .from('time_blocks')
+      .insert([{ title, start_hour: startHour, end_hour: endHour, color }])
+      .select()
+      .single()
+
+    if (error) {
+      alert(`[타임블록 DB 저장 실패]\n에러 메시지: ${error.message}\n코드: ${error.code}`)
+      console.error('addTimeBlock error:', error)
+      return null
+    }
+    return data
+  } catch (err: any) {
+    alert(`[시스템 오류] ${err.message || err}`)
+    console.error('addTimeBlock unexpected error:', err)
+    return null
+  }
+}
+
+export async function deleteTimeBlock(id: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.from('time_blocks').delete().eq('id', id)
+    if (error) {
+      alert(`[타임블록 삭제 실패]\n${error.message}`)
+      console.error('deleteTimeBlock error:', error)
+      return false
+    }
+    return true
+  } catch (err) {
+    console.error('deleteTimeBlock unexpected error:', err)
+    return false
+  }
+}
+
+// ==========================================
+// 5. 데이터 백업 & 복원 (Export / Import)
 // ==========================================
 
 export async function exportAllData() {
   try {
-    const [categories, todos, notes] = await Promise.all([
+    const [categories, todos, notes, timeBlocks] = await Promise.all([
       fetchCategories(),
       fetchTodos(),
       fetchNotes(),
+      fetchTimeBlocks(),
     ])
 
     return {
@@ -317,6 +393,7 @@ export async function exportAllData() {
       categories,
       todos,
       notes,
+      timeBlocks,
     }
   } catch (err) {
     console.error('exportAllData error:', err)
@@ -333,6 +410,7 @@ export async function importAllData(parsedData: any): Promise<boolean> {
     await supabase.from('todos').delete().neq('id', '00000000-0000-0000-0000-000000000000')
     await supabase.from('categories').delete().neq('id', '00000000-0000-0000-0000-000000000000')
     await supabase.from('notes').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    await supabase.from('time_blocks').delete().neq('id', '00000000-0000-0000-0000-000000000000')
 
     if (parsedData.categories.length > 0) {
       const catInserts = parsedData.categories.map((c: any) => ({
@@ -360,6 +438,16 @@ export async function importAllData(parsedData: any): Promise<boolean> {
         content: n.content,
       }))
       await supabase.from('notes').insert(noteInserts)
+    }
+
+    if (parsedData.timeBlocks && parsedData.timeBlocks.length > 0) {
+      const blockInserts = parsedData.timeBlocks.map((b: any) => ({
+        title: b.title,
+        start_hour: b.start_hour,
+        end_hour: b.end_hour,
+        color: b.color,
+      }))
+      await supabase.from('time_blocks').insert(blockInserts)
     }
 
     return true

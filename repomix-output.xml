@@ -1,0 +1,3514 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+app/
+  log/
+    page.tsx
+  notes/
+    page.tsx
+  planner/
+    page.tsx
+  favicon.ico
+  globals.css
+  layout.tsx
+  page.backup.tsx
+  page.tsx
+  supabase.js
+components/
+  CategoryManageModal.tsx
+  CategoryModal.tsx
+  Header.tsx
+  NavigationDock.tsx
+  NoteModal.tsx
+  TodoBacklog.tsx
+  TodoCard.tsx
+  TodoModal.tsx
+lib/
+  supabaseClient.ts
+public/
+  file.svg
+  globe.svg
+  next.svg
+  vercel.svg
+  window.svg
+services/
+  plannerService.ts
+types/
+  index.ts
+utils/
+  date.ts
+  sort.ts
+.gitignore
+AGENTS.md
+CLAUDE.md
+eslint.config.mjs
+next.config.ts
+package.json
+postcss.config.mjs
+PROJECT_CONTEXT.md
+README.md
+tsconfig.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="app/log/page.tsx">
+'use client'
+
+import React, { useState, useEffect } from 'react'
+import { ChevronLeft, ChevronRight, Calendar, CheckCircle2, Circle } from 'lucide-react'
+import { Todo } from '../../types'
+import * as plannerService from '../../services/plannerService'
+import NavigationDock from '../../components/NavigationDock'
+
+export default function DailyLogPage() {
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date()
+    return today.toISOString().split('T')[0]
+  })
+  const [todos, setTodos] = useState<Todo[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    setLoading(true)
+    const fetched = await plannerService.fetchTodos()
+    setTodos(fetched)
+    setLoading(false)
+  }
+
+  // 날짜 변경 함수
+  const handleDateChange = (offset: number) => {
+    const current = new Date(selectedDate)
+    current.setDate(current.getDate() + offset)
+    setSelectedDate(current.toISOString().split('T')[0])
+  }
+
+  // 할 일 완료 토글
+  const handleToggleComplete = async (todo: Todo) => {
+    const success = await plannerService.toggleTodoComplete(todo.id, todo.completed)
+    if (success) {
+      setTodos((prev) =>
+        prev.map((t) => (t.id === todo.id ? { ...t, completed: !todo.completed } : t))
+      )
+    }
+  }
+
+  const completedCount = todos.filter((t) => t.completed).length
+
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 p-4 md:p-8 pb-32">
+      <header className="max-w-3xl mx-auto mb-8 text-center">
+        <h1 className="text-2xl font-bold mb-2">하루 기록</h1>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          수행한 할 일들을 점검하고 오늘의 실행 결과를 확인하세요.
+        </p>
+
+        {/* 날짜 선택 컨트롤러 */}
+        <div className="flex items-center justify-center gap-4 mt-6">
+          <button
+            onClick={() => handleDateChange(-1)}
+            className="p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+
+          <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl font-mono text-sm font-bold shadow-sm">
+            <Calendar className="w-4 h-4 text-indigo-500" />
+            <span>{selectedDate}</span>
+          </div>
+
+          <button
+            onClick={() => handleDateChange(1)}
+            className="p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </header>
+
+      {/* 실행 내역 리스트 */}
+      <main className="max-w-3xl mx-auto bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
+        <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+          <h2 className="font-bold text-sm">오늘의 실행 목록</h2>
+          <span className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold bg-indigo-50 dark:bg-indigo-950 px-3 py-1 rounded-full">
+            {completedCount} / {todos.length} 개 완료
+          </span>
+        </div>
+
+        {loading ? (
+          <p className="text-xs text-slate-400 text-center py-8">불러오는 중...</p>
+        ) : todos.length === 0 ? (
+          <p className="text-xs text-slate-400 text-center py-8">등록된 할 일이 없습니다.</p>
+        ) : (
+          <div className="space-y-3">
+            {todos.map((todo) => (
+              <div
+                key={todo.id}
+                onClick={() => handleToggleComplete(todo)}
+                className={`p-4 rounded-xl border transition cursor-pointer flex items-center justify-between ${
+                  todo.completed
+                    ? 'bg-slate-50 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800/80 opacity-75'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-indigo-300'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  {todo.completed ? (
+                    <CheckCircle2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />
+                  ) : (
+                    <Circle className="w-5 h-5 text-slate-300 dark:text-slate-600 flex-shrink-0" />
+                  )}
+                  <div>
+                    <span
+                      className={`text-sm font-medium block ${
+                        todo.completed ? 'line-through text-slate-400' : 'text-slate-800 dark:text-slate-100'
+                      }`}
+                    >
+                      {todo.title}
+                    </span>
+                    {todo.category && (
+                      <span className="text-[10px] text-slate-400 font-mono mt-0.5 block">
+                        [{todo.category}]
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 하위 항목 요약 표시 */}
+                {todo.sub_tasks && todo.sub_tasks.length > 0 && (
+                  <span className="text-xs text-slate-400 font-mono">
+                    {todo.sub_tasks.filter((s) => s.completed).length}/{todo.sub_tasks.length}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </main>
+
+      <NavigationDock activeTab="log" />
+    </div>
+  )
+}
+</file>
+
+<file path="app/notes/page.tsx">
+// app/notes/page.tsx 내 handleSaveNote 및 handleDeleteNote 수정
+
+// 노트 저장 (추가/수정)
+const handleSaveNote = async (
+  title: string,
+  category: string,
+  content: string,
+  id?: string
+) => {
+  if (id) {
+    const updated = await plannerService.updateNote(id, title, category, content)
+    if (updated) {
+      setNotes((prev) => prev.map((n) => (n.id === id ? updated : n)))
+    } else {
+      alert('노트 수정 실패: Supabase DB 연결 및 테이블 상태를 확인하세요.')
+    }
+  } else {
+    const created = await plannerService.addNote(title, category, content)
+    if (created) {
+      setNotes([created, ...notes])
+    } else {
+      alert('노트 저장 실패: Supabase DB 연결 및 테이블 상태를 확인하세요.')
+    }
+  }
+}
+
+// 노트 삭제
+const handleDeleteNote = async (id: string) => {
+  if (!confirm('이 노트를 삭제하시겠습니까?')) return
+  const success = await plannerService.deleteNote(id)
+  if (success) {
+    setNotes((prev) => prev.filter((n) => n.id !== id))
+  } else {
+    alert('노트 삭제에 실패했습니다.')
+  }
+}
+</file>
+
+<file path="app/planner/page.tsx">
+'use client'
+
+import React, { useState, useEffect, useRef } from 'react'
+import { toPng } from 'html-to-image'
+import {
+  Calendar,
+  Clock,
+  Download,
+  Plus,
+  Trash2,
+  CheckSquare,
+  Sparkles,
+} from 'lucide-react'
+import { Todo } from '@/types'
+import * as plannerService from '@/services/plannerService'
+import NavigationDock from '@/components/NavigationDock'
+
+interface TimeBlock {
+  id: string
+  title: string
+  start_hour: number
+  end_hour: number
+  color: string
+}
+
+const COLOR_OPTIONS = [
+  'bg-indigo-500 text-white',
+  'bg-blue-500 text-white',
+  'bg-emerald-500 text-white',
+  'bg-amber-500 text-white',
+  'bg-rose-500 text-white',
+  'bg-purple-500 text-white',
+]
+
+export default function DailyPlannerPage() {
+  const [todos, setTodos] = useState<Todo[]>([])
+  const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const [blockTitle, setBlockTitle] = useState('')
+  const [startHour, setStartHour] = useState<number>(9)
+  const [endHour, setEndHour] = useState<number>(10)
+  const [selectedColor, setSelectedColor] = useState(COLOR_OPTIONS[0])
+
+  const plannerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    setLoading(true)
+    const [fetchedTodos, fetchedBlocks] = await Promise.all([
+      plannerService.fetchTodos(),
+      plannerService.fetchTimeBlocks(),
+    ])
+    setTodos(fetchedTodos.filter((t) => !t.completed))
+    setTimeBlocks(fetchedBlocks)
+    setLoading(false)
+  }
+
+  // 타임 블록 DB 추가
+  const handleAddTimeBlock = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!blockTitle.trim()) return
+    if (startHour >= endHour) {
+      alert('종료 시간은 시작 시간보다 뒤여야 합니다.')
+      return
+    }
+
+    const created = await plannerService.addTimeBlock(
+      blockTitle.trim(),
+      startHour,
+      endHour,
+      selectedColor
+    )
+
+    if (created) {
+      setTimeBlocks([...timeBlocks, created])
+      setBlockTitle('')
+    }
+  }
+
+  const handleAssignTodoToTime = (todoTitle: string) => {
+    setBlockTitle(todoTitle)
+  }
+
+  // 타임 블록 DB 삭제
+  const handleDeleteBlock = async (id: string) => {
+    const success = await plannerService.deleteTimeBlock(id)
+    if (success) {
+      setTimeBlocks(timeBlocks.filter((b) => b.id !== id))
+    }
+  }
+
+  const handleExportImage = async () => {
+    if (!plannerRef.current) return
+
+    try {
+      const dataUrl = await toPng(plannerRef.current, { cacheBust: true, quality: 0.95 })
+      const link = document.createElement('a')
+      const today = new Date().toISOString().split('T')[0]
+      link.download = `daily_planner_${today}.png`
+      link.href = dataUrl
+      link.click()
+    } catch (err) {
+      console.error('이미지 저장 실패:', err)
+      alert('이미지 저장 중 오류가 발생했습니다.')
+    }
+  }
+
+  const hours = Array.from({ length: 18 }, (_, i) => i + 6)
+
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 p-4 md:p-8 pb-32">
+      {/* 헤더 */}
+      <header className="max-w-7xl mx-auto mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2.5">
+            <Clock className="w-6 h-6 text-indigo-500" /> 일간 플래너 & 타임테이블
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            할 일을 원하는 시간대에 가볍게 할당하고 깔끔한 이미지로 저장하세요.
+          </p>
+        </div>
+
+        <button
+          onClick={handleExportImage}
+          className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-2xl shadow-lg transition transform active:scale-95 cursor-pointer"
+        >
+          <Download className="w-4 h-4" /> 이미지로 내보내기 (PNG)
+        </button>
+      </header>
+
+      <main className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* [좌측: 할 일 목록 & 일정 추가 폼] */}
+        <section className="lg:col-span-4 space-y-6">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <h2 className="font-bold text-sm text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
+              <Plus className="w-4 h-4 text-indigo-500" /> 시간 일정 배치
+            </h2>
+
+            <form onSubmit={handleAddTimeBlock} className="space-y-4">
+              <div>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                  일정 이름
+                </label>
+                <input
+                  type="text"
+                  placeholder="일정 제목 (또는 밑의 할 일 클릭)"
+                  value={blockTitle}
+                  onChange={(e) => setBlockTitle(e.target.value)}
+                  className="input input-sm w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                    시작 시간
+                  </label>
+                  <select
+                    value={startHour}
+                    onChange={(e) => setStartHour(Number(e.target.value))}
+                    className="select select-sm w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none"
+                  >
+                    {hours.map((h) => (
+                      <option key={h} value={h}>
+                        {h < 10 ? `0${h}` : h}:00
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                    종료 시간
+                  </label>
+                  <select
+                    value={endHour}
+                    onChange={(e) => setEndHour(Number(e.target.value))}
+                    className="select select-sm w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none"
+                  >
+                    {hours
+                      .filter((h) => h > startHour)
+                      .concat(24)
+                      .map((h) => (
+                        <option key={h} value={h}>
+                          {h < 10 ? `0${h}` : h}:00
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-2">
+                  테마 색상
+                </label>
+                <div className="flex items-center gap-2">
+                  {COLOR_OPTIONS.map((color, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setSelectedColor(color)}
+                      className={`w-6 h-6 rounded-full cursor-pointer ${color.split(' ')[0]} ${
+                        selectedColor === color ? 'ring-2 ring-offset-2 ring-indigo-500 scale-110' : ''
+                      } transition`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm transition cursor-pointer"
+              >
+                타임테이블에 추가
+              </button>
+            </form>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <h2 className="font-bold text-sm text-slate-800 dark:text-slate-100 mb-3 flex items-center gap-2">
+              <CheckSquare className="w-4 h-4 text-indigo-500" /> 내 할 일 클릭하여 불러오기
+            </h2>
+            <p className="text-[11px] text-slate-400 mb-3">
+              클릭하면 위의 일정 입력창으로 제목이 자동 입력됩니다.
+            </p>
+
+            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+              {loading ? (
+                <p className="text-xs text-slate-400 py-2">불러오는 중...</p>
+              ) : todos.length === 0 ? (
+                <p className="text-xs text-slate-400 py-2">남은 할 일이 없습니다.</p>
+              ) : (
+                todos.map((todo) => (
+                  <button
+                    key={todo.id}
+                    onClick={() => handleAssignTodoToTime(todo.title)}
+                    className="w-full text-left p-2.5 bg-slate-50 dark:bg-slate-800/60 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700/60 transition truncate flex items-center justify-between cursor-pointer"
+                  >
+                    <span>{todo.title}</span>
+                    <Sparkles className="w-3 h-3 text-indigo-400 shrink-0" />
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* [우측: 이미지로 캡처될 타임테이블] */}
+        <section className="lg:col-span-8">
+          <div
+            ref={plannerRef}
+            className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm"
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-indigo-500" /> Daily Planner
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {new Date().toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    weekday: 'long',
+                  })}
+                </p>
+              </div>
+              <span className="text-[10px] bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-bold px-3 py-1 rounded-full border border-indigo-100 dark:border-indigo-900">
+                Focus Mode
+              </span>
+            </div>
+
+            <div className="space-y-1 relative">
+              {hours.map((hour) => {
+                return (
+                  <div
+                    key={hour}
+                    className="flex items-center h-11 border-b border-slate-100 dark:border-slate-800/80 text-xs"
+                  >
+                    <span className="w-16 font-mono text-slate-400 text-[11px] shrink-0">
+                      {hour < 10 ? `0${hour}` : hour}:00
+                    </span>
+
+                    <div className="flex-1 h-full flex items-center gap-1.5 pl-2 relative">
+                      {timeBlocks
+                        .filter((b) => b.start_hour === hour)
+                        .map((block) => (
+                          <div
+                            key={block.id}
+                            style={{
+                              height: `${(block.end_hour - block.start_hour) * 44 - 4}px`,
+                            }}
+                            className={`absolute top-0.5 left-2 right-2 z-10 ${block.color} rounded-xl px-3 py-2 shadow-sm flex items-start justify-between transition-all`}
+                          >
+                            <div>
+                              <p className="font-bold text-xs">{block.title}</p>
+                              <p className="text-[10px] opacity-80 font-mono">
+                                {block.start_hour}:00 - {block.end_hour}:00
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => handleDeleteBlock(block.id)}
+                              className="p-1 hover:bg-black/20 rounded-md transition cursor-pointer"
+                              title="삭제"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-white" />
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <NavigationDock activeTab="planner" />
+    </div>
+  )
+}
+</file>
+
+<file path="app/globals.css">
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+</file>
+
+<file path="app/layout.tsx">
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Create Next App",
+  description: "Generated by create next app",
+};
+
+export default function RootLayout({ children }: LayoutProps<"/">) {
+  return (
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col">{children}</body>
+    </html>
+  );
+}
+</file>
+
+<file path="app/page.backup.tsx">
+'use client'
+
+import React, { useState, useEffect, useRef } from 'react'
+import { supabase } from './supabase'
+import { Plus, CheckSquare, Calendar as CalendarIcon, Download, Trash2, ChevronLeft, ChevronRight, Settings, X } from 'lucide-react'
+import html2canvas from 'html2canvas'
+
+export default function Home() {
+  // 날짜 상태
+  const [selectedDate, setSelectedDate] = useState<string>(
+    new Date().toISOString().split('T')[0]
+  )
+
+  // 카테고리 목록 상태
+  const [categories, setCategories] = useState<{ id: string; name: string; color: string }[]>([
+    { id: '1', name: '공부', color: 'blue' },
+    { id: '2', name: '운동', color: 'emerald' },
+    { id: '3', name: '일반', color: 'amber' },
+  ])
+  const [newCatName, setNewCatName] = useState('')
+  const [newCatColor, setNewCatColor] = useState('indigo')
+  const [isCatModalOpen, setIsCatModalOpen] = useState(false)
+
+  // 1. 할 일 백로그 상태
+  const [todos, setTodos] = useState<any[]>([])
+  const [newTodo, setNewTodo] = useState('')
+  const [category, setCategory] = useState('공부')
+  const [loading, setLoading] = useState(true)
+
+  // 2. 타임블록 상태
+  const [timeBlocks, setTimeBlocks] = useState<any[]>([])
+  const [selectedTodoId, setSelectedTodoId] = useState<string>('custom')
+  const [blockTitle, setBlockTitle] = useState('')
+  const [blockCategory, setBlockCategory] = useState('공부')
+  const [startTime, setStartTime] = useState('09:00')
+  const [endTime, setEndTime] = useState('10:00')
+
+  // 3. 내보내기용 Ref
+  const dashboardRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    fetchCategories()
+  }, [])
+
+  useEffect(() => {
+    fetchData()
+  }, [selectedDate])
+
+  // 카테고리 불러오기
+  const fetchCategories = async () => {
+    const { data } = await supabase.from('categories').select('*').order('created_at', { ascending: true })
+    if (data && data.length > 0) {
+      setCategories(data)
+      setCategory(data[0].name)
+      setBlockCategory(data[0].name)
+    }
+  }
+
+  // 데이터 불러오기
+  const fetchData = async () => {
+    setLoading(true)
+    const { data: todosData } = await supabase
+      .from('todos')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    const { data: blocksData } = await supabase
+      .from('time_blocks')
+      .select('*')
+      .eq('date', selectedDate)
+      .order('start_time', { ascending: true })
+
+    setTodos(todosData || [])
+    setTimeBlocks(blocksData || [])
+    setLoading(false)
+  }
+
+  // --- [카테고리 관리 기능] ---
+  const addCategory = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newCatName.trim()) return
+
+    const { data, error } = await supabase
+      .from('categories')
+      .insert([{ name: newCatName.trim(), color: newCatColor }])
+      .select()
+
+    if (error) {
+      alert('이미 존재하는 카테고리이거나 오류가 발생했습니다.')
+    } else if (data) {
+      setCategories([...categories, data[0]])
+      setNewCatName('')
+    }
+  }
+
+  const deleteCategory = async (id: string, name: string) => {
+    if (categories.length <= 1) {
+      alert('최소 하나 이상의 카테고리가 필요합니다.')
+      return
+    }
+    const { error } = await supabase.from('categories').delete().eq('id', id)
+    if (!error) {
+      setCategories(categories.filter(c => c.id !== id))
+    }
+  }
+
+  // 색상 스타일에 따른 클래스 매핑
+  const getColorClasses = (catName: string) => {
+    const cat = categories.find(c => c.name === catName)
+    const color = cat?.color || 'indigo'
+
+    const colorMap: Record<string, { badge: string; block: string }> = {
+      blue: {
+        badge: 'bg-blue-50 text-blue-700 border-blue-200',
+        block: 'bg-blue-100 text-blue-900 border-blue-300',
+      },
+      emerald: {
+        badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        block: 'bg-emerald-100 text-emerald-900 border-emerald-300',
+      },
+      amber: {
+        badge: 'bg-amber-50 text-amber-700 border-amber-200',
+        block: 'bg-amber-100 text-amber-900 border-amber-300',
+      },
+      rose: {
+        badge: 'bg-rose-50 text-rose-700 border-rose-200',
+        block: 'bg-rose-100 text-rose-900 border-rose-300',
+      },
+      purple: {
+        badge: 'bg-purple-50 text-purple-700 border-purple-200',
+        block: 'bg-purple-100 text-purple-900 border-purple-300',
+      },
+      indigo: {
+        badge: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+        block: 'bg-indigo-100 text-indigo-900 border-indigo-300',
+      },
+    }
+
+    return colorMap[color] || colorMap.indigo
+  }
+
+  const changeDate = (days: number) => {
+    const curr = new Date(selectedDate)
+    curr.setDate(curr.getDate() + days)
+    setSelectedDate(curr.toISOString().split('T')[0])
+  }
+
+  // --- [할 일 백로그] ---
+  const addTodo = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newTodo.trim()) return
+
+    const { data, error } = await supabase
+      .from('todos')
+      .insert([{ title: newTodo, category, completed: false }])
+      .select()
+
+    if (error) {
+      alert('할 일 등록 중 오류가 발생했습니다.')
+    } else if (data) {
+      setTodos([...data, ...todos])
+      setNewTodo('')
+    }
+  }
+
+  const toggleComplete = async (id: string, currentStatus: boolean) => {
+    const { error } = await supabase
+      .from('todos')
+      .update({ completed: !currentStatus })
+      .eq('id', id)
+
+    if (!error) {
+      setTodos(todos.map(t => t.id === id ? { ...t, completed: !currentStatus } : t))
+    }
+  }
+
+  const deleteTodo = async (id: string) => {
+    const { error } = await supabase.from('todos').delete().eq('id', id)
+    if (!error) {
+      setTodos(todos.filter(t => t.id !== id))
+    }
+  }
+
+  // --- [타임블록] ---
+  const handleSelectTodo = (todoId: string) => {
+    setSelectedTodoId(todoId)
+    if (todoId === 'custom') {
+      setBlockTitle('')
+      setBlockCategory(categories[0]?.name || '공부')
+    } else {
+      const selected = todos.find(t => t.id === todoId)
+      if (selected) {
+        setBlockTitle(selected.title)
+        setBlockCategory(selected.category || categories[0]?.name || '공부')
+      }
+    }
+  }
+
+  const addTimeBlock = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!blockTitle.trim()) return
+
+    const newBlock = {
+      title: blockTitle,
+      category: blockCategory,
+      date: selectedDate,
+      start_time: startTime,
+      end_time: endTime,
+    }
+
+    const { data, error } = await supabase
+      .from('time_blocks')
+      .insert([newBlock])
+      .select()
+
+    if (error) {
+      alert('타임블록 등록 중 오류가 발생했습니다.')
+    } else if (data) {
+      setTimeBlocks([...timeBlocks, ...data].sort((a, b) => a.start_time.localeCompare(b.start_time)))
+      setBlockTitle('')
+      setSelectedTodoId('custom')
+    }
+  }
+
+  const deleteTimeBlock = async (id: string) => {
+    const { error } = await supabase.from('time_blocks').delete().eq('id', id)
+    if (!error) {
+      setTimeBlocks(timeBlocks.filter(b => b.id !== id))
+    }
+  }
+
+  // --- [이미지 내보내기] ---
+  const exportAsImage = async () => {
+    if (!dashboardRef.current) return
+    try {
+      const canvas = await html2canvas(dashboardRef.current, { scale: 2 })
+      const image = canvas.toDataURL('image/png')
+      const link = document.createElement('a')
+      link.href = image
+      link.download = `대시보드_${selectedDate}.png`
+      link.click()
+    } catch (err) {
+      alert('이미지 저장 중 오류가 발생했습니다.')
+    }
+  }
+
+  const hours = Array.from({ length: 18 }, (_, i) => {
+    const h = i + 6
+    return h < 10 ? `0${h}:00` : `${h}:00`
+  })
+
+  const activeTodos = todos.filter(t => !t.completed)
+  const todayStr = new Date().toISOString().split('T')[0]
+
+  return (
+    <div ref={dashboardRef} className="min-h-screen bg-slate-50 text-slate-800 p-4 md:p-8 relative">
+      {/* 상단 헤더 */}
+      <header className="max-w-6xl mx-auto mb-8 flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100 gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">생산성 & 타임블로킹 대시보드</h1>
+          <p className="text-sm text-slate-500 mt-1">맞춤 카테고리 기반 개인 플래너</p>
+        </div>
+
+        {/* 날짜 선택 컨트롤러 */}
+        <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+          <button
+            onClick={() => changeDate(-1)}
+            className="p-1.5 hover:bg-white rounded-lg text-slate-600 transition"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          
+          <div className="flex items-center gap-2 px-2">
+            <CalendarIcon className="w-4 h-4 text-indigo-600" />
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="bg-transparent text-sm font-semibold text-slate-700 focus:outline-none cursor-pointer"
+            />
+          </div>
+
+          <button
+            onClick={() => changeDate(1)}
+            className="p-1.5 hover:bg-white rounded-lg text-slate-600 transition"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+
+          {selectedDate !== todayStr && (
+            <button
+              onClick={() => setSelectedDate(todayStr)}
+              className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg transition ml-1"
+            >
+              오늘
+            </button>
+          )}
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => setIsCatModalOpen(true)}
+            className="flex items-center gap-2 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition"
+          >
+            <Settings className="w-4 h-4" /> 카테고리 관리
+          </button>
+
+          <button
+            onClick={exportAsImage}
+            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl transition shadow-sm"
+          >
+            <Download className="w-4 h-4" /> 이미지로 내보내기
+          </button>
+        </div>
+      </header>
+
+      {/* 메인 레이아웃 (2열) */}
+      <main className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-6">
+        
+        {/* 1. 할 일 백로그 (4컬럼) */}
+        <section className="md:col-span-5 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col h-[750px]">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <CheckSquare className="w-5 h-5 text-indigo-600" />
+              <h2 className="text-lg font-bold">할 일 백로그</h2>
+            </div>
+          </div>
+
+          <form onSubmit={addTodo} className="flex gap-2 mb-4">
+            <input
+              type="text"
+              placeholder="새 할 일 입력..."
+              value={newTodo}
+              onChange={(e) => setNewTodo(e.target.value)}
+              className="flex-1 px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="px-2 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none"
+            >
+              {categories.map(c => (
+                <option key={c.id} value={c.name}>{c.name}</option>
+              ))}
+            </select>
+            <button type="submit" className="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition">
+              <Plus className="w-5 h-5" />
+            </button>
+          </form>
+
+          <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+            {loading ? (
+              <p className="text-sm text-slate-400 text-center py-8">불러오는 중...</p>
+            ) : todos.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-8">등록된 할 일이 없습니다.</p>
+            ) : (
+              todos.map((todo) => (
+                <div
+                  key={todo.id}
+                  className="flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-100 transition group"
+                >
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={todo.completed}
+                      onChange={() => toggleComplete(todo.id, todo.completed)}
+                      className="w-4 h-4 accent-indigo-600 rounded cursor-pointer"
+                    />
+                    <span className={`text-sm ${todo.completed ? 'line-through text-slate-400' : 'text-slate-700'}`}>
+                      {todo.title}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs px-2 py-1 border rounded-lg font-medium ${getColorClasses(todo.category).badge}`}>
+                      {todo.category}
+                    </span>
+                    <button
+                      onClick={() => deleteTodo(todo.id)}
+                      className="text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+
+        {/* 2. 타임블록 일정표 (7컬럼) */}
+        <section className="md:col-span-7 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col h-[750px]">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <CalendarIcon className="w-5 h-5 text-indigo-600" />
+              <h2 className="text-lg font-bold">타임블록 일정표</h2>
+            </div>
+            <span className="text-xs text-slate-400 font-medium">선택일: {selectedDate}</span>
+          </div>
+
+          {/* 타임블록 생성 폼 */}
+          <form onSubmit={addTimeBlock} className="space-y-2 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
+            <div className="flex gap-2">
+              <select
+                value={selectedTodoId}
+                onChange={(e) => handleSelectTodo(e.target.value)}
+                className="flex-1 px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg font-medium focus:outline-none"
+              >
+                <option value="custom">-- 백로그 선택 (또는 직접 입력) --</option>
+                {activeTodos.map(todo => (
+                  <option key={todo.id} value={todo.id}>
+                    [{todo.category}] {todo.title}
+                  </option>
+                ))}
+              </select>
+
+              {selectedTodoId === 'custom' && (
+                <>
+                  <input
+                    type="text"
+                    placeholder="블록 제목 직접 입력..."
+                    value={blockTitle}
+                    onChange={(e) => setBlockTitle(e.target.value)}
+                    className="flex-1 px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none"
+                  />
+                  <select
+                    value={blockCategory}
+                    onChange={(e) => setBlockCategory(e.target.value)}
+                    className="px-2 py-2 text-xs bg-white border border-slate-200 rounded-lg"
+                  >
+                    {categories.map(c => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+                </>
+              )}
+            </div>
+
+            <div className="flex gap-2 items-center">
+              <span className="text-xs text-slate-500">시간:</span>
+              <select
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className="px-2 py-1.5 text-xs bg-white border border-slate-200 rounded-lg"
+              >
+                {hours.map(h => <option key={h} value={h}>{h}</option>)}
+              </select>
+              <span className="text-xs text-slate-400">~</span>
+              <select
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className="px-2 py-1.5 text-xs bg-white border border-slate-200 rounded-lg"
+              >
+                {hours.map(h => <option key={h} value={h}>{h}</option>)}
+              </select>
+
+              <button
+                type="submit"
+                className="ml-auto px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition"
+              >
+                블록 등록
+              </button>
+            </div>
+          </form>
+
+          {/* 타임라인 영역 */}
+          <div className="flex-1 overflow-y-auto border border-slate-100 rounded-xl p-2 space-y-1 bg-slate-50/50">
+            {hours.map((hour) => {
+              const matchedBlocks = timeBlocks.filter(b => b.start_time <= hour && b.end_time > hour)
+              return (
+                <div key={hour} className="flex gap-3 text-xs min-h-[36px] items-center border-b border-slate-100 last:border-b-0 px-2 py-1">
+                  <span className="w-12 text-slate-400 font-mono">{hour}</span>
+                  <div className="flex-1 flex gap-2 flex-wrap">
+                    {matchedBlocks.map((block) => (
+                      <div
+                        key={block.id}
+                        className={`flex items-center gap-2 px-3 py-1 rounded-md font-medium border ${getColorClasses(block.category).block}`}
+                      >
+                        <span>{block.title}</span>
+                        <span className="text-[10px] opacity-75">({block.start_time}~{block.end_time})</span>
+                        <button
+                          onClick={() => deleteTimeBlock(block.id)}
+                          className="opacity-60 hover:opacity-100 hover:text-red-600 ml-1 transition"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+
+      </main>
+
+      {/* 카테고리 관리 모달 (팝업) */}
+      {isCatModalOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl border border-slate-100">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-slate-800">카테고리 관리</h3>
+              <button onClick={() => setIsCatModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* 신규 카테고리 추가 */}
+            <form onSubmit={addCategory} className="flex gap-2 mb-6">
+              <input
+                type="text"
+                placeholder="카테고리명..."
+                value={newCatName}
+                onChange={(e) => setNewCatName(e.target.value)}
+                className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none"
+              />
+              <select
+                value={newCatColor}
+                onChange={(e) => setNewCatColor(e.target.value)}
+                className="px-2 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none"
+              >
+                <option value="blue">파랑 (Blue)</option>
+                <option value="emerald">초록 (Emerald)</option>
+                <option value="amber">주황 (Amber)</option>
+                <option value="rose">빨강 (Rose)</option>
+                <option value="purple">보라 (Purple)</option>
+                <option value="indigo">남색 (Indigo)</option>
+              </select>
+              <button type="submit" className="px-3 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-xl">
+                추가
+              </button>
+            </form>
+
+            {/* 카테고리 목록 */}
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {categories.map(c => (
+                <div key={c.id} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
+                  <span className={`px-2.5 py-1 rounded-lg border font-medium ${getColorClasses(c.name).badge}`}>
+                    {c.name}
+                  </span>
+                  <button
+                    onClick={() => deleteCategory(c.id, c.name)}
+                    className="text-slate-400 hover:text-red-500"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+</file>
+
+<file path="app/page.tsx">
+'use client'
+
+import React, { useState, useEffect, useRef } from 'react'
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
+import {
+  Plus,
+  CheckSquare,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  RotateCcw,
+  Settings,
+  Calendar,
+  Download,
+  Upload,
+  Search,
+  ArrowUpDown,
+} from 'lucide-react'
+import { Category, Todo } from '@/types'
+import * as plannerService from '@/services/plannerService'
+import NavigationDock from '@/components/NavigationDock'
+import TodoCard from '@/components/TodoCard'
+import TodoModal from '@/components/TodoModal'
+import CategoryManageModal from '@/components/CategoryManageModal'
+import { sortTodos, filterTodos, SortOption } from '@/utils/sort'
+
+export default function TodosPage() {
+  const [todos, setTodos] = useState<Todo[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // 검색 및 정렬 상태
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState<SortOption>('dueDate')
+
+  // 모달 및 서브 상태
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isCatManageModalOpen, setIsCatManageModalOpen] = useState(false)
+  const [expandedTodoIds, setExpandedTodoIds] = useState<string[]>([])
+  const [showCompleted, setShowCompleted] = useState(false)
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    setLoading(true)
+    const [fetchedTodos, fetchedCats] = await Promise.all([
+      plannerService.fetchTodos(),
+      plannerService.fetchCategories('todo'),
+    ])
+    setTodos(fetchedTodos)
+    setCategories(fetchedCats)
+    setLoading(false)
+  }
+
+  // 백업 & 복원
+  const handleExportData = async () => {
+    const data = await plannerService.exportAllData()
+    if (!data) return alert('데이터 백업 생성 실패')
+
+    const today = new Date().toISOString().split('T')[0]
+    const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(data, null, 2))}`
+    const a = document.createElement('a')
+    a.href = jsonString
+    a.download = `productivity_backup_${today}.json`
+    a.click()
+  }
+
+  const handleImportFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!confirm('현재 저장된 데이터가 백업본으로 전체 교체됩니다. 진행하시겠습니까?')) {
+      e.target.value = ''
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = async (evt) => {
+      try {
+        const parsed = JSON.parse(evt.target?.result as string)
+        const success = await plannerService.importAllData(parsed)
+        if (success) {
+          alert('복원 성공!')
+          loadData()
+        }
+      } catch (err) {
+        alert('올바르지 않은 백업 파일 형식입니다.')
+      }
+      if (e.target) e.target.value = ''
+    }
+    reader.readAsText(file)
+  }
+
+  // 할 일 추가
+  const handleAddTodoSubmit = async (
+    title: string,
+    category: string,
+    dueDate: string,
+    subTasks: string[]
+  ) => {
+    const created = await plannerService.addTodo(title, category, subTasks, dueDate || null)
+    if (created) setTodos([created, ...todos])
+  }
+
+  // 드래그 앤 드롭
+  const handleCategoryChange = async (todoId: string, newCategory: string) => {
+    setTodos((prev) =>
+      prev.map((t) => (t.id === todoId ? { ...t, category: newCategory } : t))
+    )
+    await plannerService.updateTodoCategory(todoId, newCategory)
+  }
+
+  const onDragEnd = (result: DropResult) => {
+    const { draggableId, destination } = result
+    if (!destination) return
+    const newCat = destination.droppableId === 'inbox' ? '' : destination.droppableId
+    handleCategoryChange(draggableId, newCat)
+  }
+
+  // 상태 관리
+  const handleToggleComplete = async (todo: Todo) => {
+    const success = await plannerService.toggleTodoComplete(todo.id, todo.completed)
+    if (success) {
+      setTodos((prev) =>
+        prev.map((t) => (t.id === todo.id ? { ...t, completed: !todo.completed } : t))
+      )
+    }
+  }
+
+  const handleDeletePermanently = async (id: string) => {
+    const success = await plannerService.deleteTodoPermanently(id)
+    if (success) setTodos(todos.filter((t) => t.id !== id))
+  }
+
+  const handleToggleSubTask = async (todo: Todo, subTaskId: string) => {
+    const nextSubTasks = (todo.sub_tasks || []).map((st) =>
+      st.id === subTaskId ? { ...st, completed: !st.completed } : st
+    )
+    setTodos((prev) =>
+      prev.map((t) => (t.id === todo.id ? { ...t, sub_tasks: nextSubTasks } : t))
+    )
+    await plannerService.updateSubTasks(todo.id, nextSubTasks)
+  }
+
+  const toggleAccordion = (id: string) => {
+    setExpandedTodoIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    )
+  }
+
+  // 카테고리 CRUD
+  const handleAddCategory = async (name: string) => {
+    const created = await plannerService.addCategory(name, 'todo')
+    if (created) setCategories([...categories, created])
+  }
+
+  const handleUpdateCategory = async (cat: Category, newName: string) => {
+    const success = await plannerService.updateCategory(cat.id, newName)
+    if (success) {
+      setTodos((prev) =>
+        prev.map((t) => (t.category === cat.name ? { ...t, category: newName } : t))
+      )
+      setCategories((prev) =>
+        prev.map((c) => (c.id === cat.id ? { ...c, name: newName } : c))
+      )
+    }
+  }
+
+  const handleDeleteCategory = async (cat: Category) => {
+    if (!confirm(`'${cat.name}' 카테고리를 삭제하시겠습니까? 소속 항목은 수집함으로 이동합니다.`)) {
+      return
+    }
+    const success = await plannerService.deleteCategory(cat.id)
+    if (success) {
+      setTodos((prev) =>
+        prev.map((t) => (t.category === cat.name ? { ...t, category: '' } : t))
+      )
+      setCategories((prev) => prev.filter((c) => c.id !== cat.id))
+    }
+  }
+
+  // 데이터 필터링 & 정렬 연산
+  const filteredTodos = filterTodos(todos, searchQuery)
+  const activeTodos = filteredTodos.filter((t) => !t.completed)
+  const completedTodos = filteredTodos.filter((t) => t.completed)
+  const inboxTodos = sortTodos(
+    activeTodos.filter((t) => !t.category || t.category === ''),
+    sortBy
+  )
+
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 p-4 md:p-8 pb-32">
+      {/* 헤더 */}
+      <header className="max-w-7xl mx-auto mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">전체 할 일 (Backlog)</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            할 일을 우측 수집함에서 좌측 카테고리 블록으로 자유롭게 드래그하세요.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <input
+            type="file"
+            accept=".json"
+            ref={fileInputRef}
+            onChange={handleImportFileChange}
+            className="hidden"
+          />
+
+          <button
+            onClick={handleExportData}
+            title="모든 데이터 JSON 저장"
+            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl shadow-sm transition"
+          >
+            <Download className="w-3.5 h-3.5 text-emerald-500" /> 백업
+          </button>
+
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            title="백업 파일 불러오기"
+            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl shadow-sm transition"
+          >
+            <Upload className="w-3.5 h-3.5 text-blue-500" /> 복원
+          </button>
+
+          <button
+            onClick={() => setIsCatManageModalOpen(true)}
+            className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl shadow-sm transition"
+          >
+            <Settings className="w-3.5 h-3.5 text-indigo-500" /> 카테고리 관리
+          </button>
+        </div>
+      </header>
+
+      {/* [검색 & 정렬 바] */}
+      <section className="max-w-7xl mx-auto mb-6 flex flex-col sm:flex-row gap-3 items-center justify-between bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="relative w-full sm:w-80">
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="할 일 제목 또는 서브태스크 검색..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="input input-sm w-full pl-9 bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+          <span className="text-xs text-slate-500 font-medium">정렬:</span>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortOption)}
+            className="select select-sm bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-700 dark:text-slate-200 focus:outline-none"
+          >
+            <option value="dueDate">마감일 임박순 (D-Day)</option>
+            <option value="alphabetical">가나다순</option>
+            <option value="latest">최신 생성순</option>
+          </select>
+        </div>
+      </section>
+
+      {/* 칸반 보드 */}
+      <DragDropContext onDragEnd={onDragEnd}>
+        <main className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+          {/* [좌측: 카테고리 목록] */}
+          <section className="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {categories.map((cat) => {
+              const catTodos = sortTodos(
+                activeTodos.filter((t) => t.category === cat.name),
+                sortBy
+              )
+
+              return (
+                <div
+                  key={cat.id}
+                  className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm min-h-[220px] flex flex-col transition-all"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="font-bold text-xs px-3 py-1 bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 rounded-xl border border-indigo-200 dark:border-indigo-800">
+                      {cat.name}
+                    </span>
+                    <span className="text-xs text-slate-400 font-mono">{catTodos.length}개</span>
+                  </div>
+
+                  <Droppable droppableId={cat.name}>
+                    {(provided) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className="flex-1 space-y-2 bg-slate-50/50 dark:bg-slate-950/40 p-2 rounded-xl border border-dashed border-slate-200 dark:border-slate-800/80 min-h-[150px]"
+                      >
+                        {catTodos.map((todo, index) => (
+                          <TodoCard
+                            key={todo.id}
+                            todo={todo}
+                            index={index}
+                            isExpanded={expandedTodoIds.includes(todo.id)}
+                            toggleAccordion={toggleAccordion}
+                            handleToggleComplete={handleToggleComplete}
+                            handleToggleSubTask={handleToggleSubTask}
+                          />
+                        ))}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
+                </div>
+              )
+            })}
+          </section>
+
+          {/* [우측: 수집함] */}
+          <section className="md:col-span-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm min-h-[500px] flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2 text-sm">
+                <CheckSquare className="w-4 h-4 text-indigo-500" /> 수집함 (미분류)
+              </h2>
+              <span className="text-xs bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg font-mono">
+                {inboxTodos.length}
+              </span>
+            </div>
+
+            <Droppable droppableId="inbox">
+              {(provided) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  className="flex-1 space-y-2 bg-slate-50/50 dark:bg-slate-950/40 p-2 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 min-h-[400px]"
+                >
+                  {inboxTodos.map((todo, index) => (
+                    <Draggable key={todo.id} draggableId={todo.id} index={index}>
+                      {(provided) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          {...provided.dragHandleProps}
+                          className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:border-indigo-300 dark:hover:border-indigo-700 transition flex flex-col gap-2"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={todo.completed}
+                                onChange={() => handleToggleComplete(todo)}
+                                className="checkbox checkbox-xs checkbox-primary cursor-pointer"
+                              />
+                              <span className="text-xs font-medium text-slate-800 dark:text-slate-100">
+                                {todo.title}
+                              </span>
+                            </div>
+                          </div>
+
+                          {todo.due_date && (
+                            <div className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-mono">
+                              <Calendar className="w-3 h-3" />
+                              <span>{todo.due_date}까지</span>
+                            </div>
+                          )}
+
+                          <select
+                            value={todo.category || ''}
+                            onChange={(e) => handleCategoryChange(todo.id, e.target.value)}
+                            className="select select-xs w-full bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300 text-[11px]"
+                          >
+                            <option value="">-- 카테고리 선택 --</option>
+                            {categories.map((c) => (
+                              <option key={c.id} value={c.name}>
+                                {c.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </section>
+        </main>
+      </DragDropContext>
+
+      {/* 완료 보관함 */}
+      <section className="max-w-7xl mx-auto mt-8 border-t border-slate-200 dark:border-slate-800 pt-6">
+        <button
+          onClick={() => setShowCompleted(!showCompleted)}
+          className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition mb-4"
+        >
+          {showCompleted ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          완료된 항목 ({completedTodos.length}개)
+        </button>
+
+        {showCompleted && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {completedTodos.length === 0 ? (
+              <p className="text-xs text-slate-400 py-2">완료된 항목이 없습니다.</p>
+            ) : (
+              completedTodos.map((todo) => (
+                <div
+                  key={todo.id}
+                  className="p-3 bg-slate-100/60 dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between opacity-70 hover:opacity-100 transition"
+                >
+                  <span className="text-xs line-through text-slate-500">{todo.title}</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => handleToggleComplete(todo)}
+                      title="복원하기"
+                      className="p-1 hover:text-indigo-500 text-slate-400 transition"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleDeletePermanently(todo.id)}
+                      title="영구 삭제"
+                      className="p-1 hover:text-red-500 text-slate-400 transition"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* 플로팅 + 버튼 */}
+      <button
+        onClick={() => setIsModalOpen(true)}
+        className="fixed bottom-20 right-8 z-50 w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-2xl flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
+        title="새 할 일 추가"
+      >
+        <Plus className="w-7 h-7" />
+      </button>
+
+      {/* 모달 */}
+      <TodoModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        categories={categories}
+        onSubmit={handleAddTodoSubmit}
+      />
+
+      <CategoryManageModal
+        isOpen={isCatManageModalOpen}
+        onClose={() => setIsCatManageModalOpen(false)}
+        categories={categories}
+        onAddCategory={handleAddCategory}
+        onUpdateCategory={handleUpdateCategory}
+        onDeleteCategory={handleDeleteCategory}
+      />
+
+      <NavigationDock activeTab="todos" />
+    </div>
+  )
+}
+</file>
+
+<file path="app/supabase.js">
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+</file>
+
+<file path="components/CategoryManageModal.tsx">
+'use client'
+
+import React, { useState } from 'react'
+import { X, Settings, Edit2, Trash2 } from 'lucide-react'
+import { Category } from '@/types'
+
+interface CategoryManageModalProps {
+  isOpen: boolean
+  onClose: () => void
+  categories: Category[]
+  onAddCategory: (name: string) => void
+  onUpdateCategory: (cat: Category, newName: string) => void
+  onDeleteCategory: (cat: Category) => void
+}
+
+export default function CategoryManageModal({
+  isOpen,
+  onClose,
+  categories,
+  onAddCategory,
+  onUpdateCategory,
+  onDeleteCategory,
+}: CategoryManageModalProps) {
+  const [newCatName, setNewCatName] = useState('')
+  const [editingCatId, setEditingCatId] = useState<string | null>(null)
+  const [editingCatName, setEditingCatName] = useState('')
+
+  if (!isOpen) return null
+
+  const handleAdd = () => {
+    if (!newCatName.trim()) return
+    onAddCategory(newCatName.trim())
+    setNewCatName('')
+  }
+
+  const handleUpdate = (cat: Category) => {
+    if (!editingCatName.trim()) return
+    onUpdateCategory(cat, editingCatName.trim())
+    setEditingCatId(null)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-xl p-8 relative max-h-[85vh] flex flex-col">
+        <button
+          onClick={onClose}
+          className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition"
+        >
+          <X className="w-6 h-6" />
+        </button>
+
+        <h3 className="text-xl font-bold mb-6 flex items-center gap-2.5">
+          <Settings className="w-6 h-6 text-indigo-500" /> 카테고리 관리
+        </h3>
+
+        <div className="flex gap-3 mb-6">
+          <input
+            type="text"
+            placeholder="새 카테고리 이름 입력 (예: 프로젝트, 공모전)..."
+            value={newCatName}
+            onChange={(e) => setNewCatName(e.target.value)}
+            className="input h-12 flex-1 bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 rounded-2xl text-sm px-4 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          />
+          <button
+            onClick={handleAdd}
+            className="btn h-12 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm font-semibold px-6 transition"
+          >
+            추가
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto space-y-3 pr-1 border-t border-slate-100 dark:border-slate-800 pt-5">
+          {categories.map((cat) => (
+            <div
+              key={cat.id}
+              className="flex items-center justify-between p-4 bg-slate-50/80 dark:bg-slate-800/40 rounded-2xl border border-slate-200/80 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-900 transition"
+            >
+              {editingCatId === cat.id ? (
+                <input
+                  type="text"
+                  value={editingCatName}
+                  onChange={(e) => setEditingCatName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleUpdate(cat)}
+                  autoFocus
+                  className="input h-10 flex-1 bg-white dark:bg-slate-900 border-indigo-500 rounded-xl text-sm px-3 mr-3 focus:outline-none"
+                />
+              ) : (
+                <span className="text-sm font-bold text-slate-800 dark:text-slate-100 pl-1">
+                  {cat.name}
+                </span>
+              )}
+
+              <div className="flex items-center gap-2">
+                {editingCatId === cat.id ? (
+                  <button
+                    onClick={() => handleUpdate(cat)}
+                    className="btn h-9 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-medium"
+                  >
+                    저장
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setEditingCatId(cat.id)
+                      setEditingCatName(cat.name)
+                    }}
+                    title="이름 수정"
+                    className="p-2 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 text-slate-400 hover:text-indigo-600 rounded-xl transition"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                )}
+
+                <button
+                  onClick={() => onDeleteCategory(cat)}
+                  title="삭제"
+                  className="p-2 hover:bg-red-50 dark:hover:bg-red-950/60 text-slate-400 hover:text-red-500 rounded-xl transition"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+          <button
+            onClick={onClose}
+            className="btn h-11 px-7 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-2xl text-xs font-semibold transition"
+          >
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+</file>
+
+<file path="components/CategoryModal.tsx">
+import React, { useState } from 'react'
+import { Category } from '../types'
+import { X, Trash2 } from 'lucide-react'
+
+interface CategoryModalProps {
+  isOpen: boolean
+  categories: Category[]
+  onClose: () => void
+  onAddCategory: (name: string, color: string) => void
+  onDeleteCategory: (id: string) => void
+  getColorClasses: (catName: string) => { badge: string; block: string }
+}
+
+export default function CategoryModal({
+  isOpen,
+  categories,
+  onClose,
+  onAddCategory,
+  onDeleteCategory,
+  getColorClasses,
+}: CategoryModalProps) {
+  const [newCatName, setNewCatName] = useState('')
+  const [newCatColor, setNewCatColor] = useState('indigo')
+
+  if (!isOpen) return null
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newCatName.trim()) return
+    onAddCategory(newCatName.trim(), newCatColor)
+    setNewCatName('')
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl border border-slate-100">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-bold text-slate-800">카테고리 관리</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex gap-2 mb-6">
+          <input
+            type="text"
+            placeholder="카테고리명..."
+            value={newCatName}
+            onChange={(e) => setNewCatName(e.target.value)}
+            className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none"
+          />
+          <select
+            value={newCatColor}
+            onChange={(e) => setNewCatColor(e.target.value)}
+            className="px-2 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none"
+          >
+            <option value="blue">파랑 (Blue)</option>
+            <option value="emerald">초록 (Emerald)</option>
+            <option value="amber">주황 (Amber)</option>
+            <option value="rose">빨강 (Rose)</option>
+            <option value="purple">보라 (Purple)</option>
+            <option value="indigo">남색 (Indigo)</option>
+          </select>
+          <button type="submit" className="px-3 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-xl">
+            추가
+          </button>
+        </form>
+
+        <div className="space-y-2 max-h-60 overflow-y-auto">
+          {categories.map((c) => (
+            <div key={c.id} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
+              <span className={`px-2.5 py-1 rounded-lg border font-medium ${getColorClasses(c.name).badge}`}>
+                {c.name}
+              </span>
+              <button onClick={() => onDeleteCategory(c.id)} className="text-slate-400 hover:text-red-500">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+</file>
+
+<file path="components/Header.tsx">
+import React, { useState } from 'react'
+import { Calendar as CalendarIcon, Download, Settings, ChevronLeft, ChevronRight } from 'lucide-react'
+
+interface HeaderProps {
+  selectedDate: string
+  onChangeDate: (days: number) => void
+  onSelectDate: (date: string) => void
+  onOpenCatModal: () => void
+  onExportImage: () => void
+}
+
+export default function Header({
+  selectedDate,
+  onChangeDate,
+  onSelectDate,
+  onOpenCatModal,
+  onExportImage,
+}: HeaderProps) {
+  const [isDarkMode, setIsDarkMode] = useState(false)
+  const todayStr = new Date().toISOString().split('T')[0]
+
+  const toggleDarkMode = () => {
+    setIsDarkMode((prev) => !prev)
+    document.documentElement.classList.toggle('dark')
+  }
+
+  return (
+    <header className="max-w-6xl mx-auto mb-8 flex flex-col md:flex-row justify-between items-center bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors gap-4">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">생산성 & 타임블로킹 대시보드</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">맞춤 카테고리 기반 개인 플래너</p>
+      </div>
+
+      <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
+        <button
+          onClick={() => onChangeDate(-1)}
+          className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-slate-600 dark:text-slate-300 transition"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+
+        <div className="flex items-center gap-2 px-2">
+          <CalendarIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => onSelectDate(e.target.value)}
+            className="bg-transparent text-sm font-semibold text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
+          />
+        </div>
+
+        <button
+          onClick={() => onChangeDate(1)}
+          className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-slate-600 dark:text-slate-300 transition"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+
+        {selectedDate !== todayStr && (
+          <button
+            onClick={() => onSelectDate(todayStr)}
+            className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-xs font-semibold rounded-lg transition ml-1"
+          >
+            오늘
+          </button>
+        )}
+      </div>
+
+      <div className="flex items-center gap-3">
+        {/* 💡 라이트 모드일 때 해 / 다크 모드일 때 달 표시 */}
+        <button
+          onClick={toggleDarkMode}
+          className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-amber-500 dark:text-amber-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer flex items-center justify-center"
+          title={isDarkMode ? '라이트 모드로 변경' : '다크 모드로 변경'}
+        >
+          {isDarkMode ? (
+            /* 다크 모드 상태 (어두운 화면) -> 달 아이콘만 표시 */
+            <svg
+              className="h-5 w-5 fill-current"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+            >
+              <path d="M21.64,13a1,1,0,0,0-1.05-.14,8.05,8.05,0,0,1-3.37.73A8.15,8.15,0,0,1,9.08,5.49a8.59,8.59,0,0,1,.25-2A1,1,0,0,0,8,2.36,10.14,10.14,0,1,0,22,14.05,1,1,0,0,0,21.64,13Zm-9.5,6.69A8.14,8.14,0,0,1,7.08,5.22v.27A10.15,10.15,0,0,0,17.22,15.63a9.79,9.79,0,0,0,2.1-.22A8.11,8.11,0,0,1,12.14,19.73Z" />
+            </svg>
+          ) : (
+            /* 라이트 모드 상태 (밝은 화면) -> 해 아이콘만 표시 */
+            <svg
+              className="h-5 w-5 fill-current text-amber-500"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+            >
+              <path d="M5.64,17l-.71.71a1,1,0,0,0,0,1.41,1,1,0,0,0,1.41,0l.71-.71A1,1,0,0,0,5.64,17ZM5,12a1,1,0,0,0-1-1H3a1,1,0,0,0,0,2H4A1,1,0,0,0,5,12Zm7-7a1,1,0,0,0,1-1V3a1,1,0,0,0-2,0V4A1,1,0,0,0,12,5ZM5.64,7.05a1,1,0,0,0,.7.29,1,1,0,0,0,.71-.29,1,1,0,0,0,0-1.41l-.71-.71A1,1,0,0,0,4.93,6.34Zm12,.29a1,1,0,0,0,.7-.29l.71-.71a1,1,0,1,0-1.41-1.41L17,5.64a1,1,0,0,0,0,1.41A1,1,0,0,0,17.66,7.34ZM21,11H20a1,1,0,0,0,0,2h1a1,1,0,0,0,0-2Zm-9,8a1,1,0,0,0-1,1v1a1,1,0,0,0,2,0V20A1,1,0,0,0,12,19ZM18.36,17A1,1,0,0,0,17,18.36l.71.71a1,1,0,0,0,1.41,0,1,1,0,0,0,0-1.41ZM12,6.5A5.5,5.5,0,1,0,17.5,12,5.51,5.51,0,0,0,12,6.5Zm0,9A3.5,3.5,0,1,1,15.5,12,3.5,3.5,0,0,1,12,15.5Z" />
+            </svg>
+          )}
+        </button>
+
+        <button
+          onClick={onOpenCatModal}
+          className="flex items-center gap-2 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-xl transition"
+        >
+          <Settings className="w-4 h-4" /> 카테고리 관리
+        </button>
+
+        <button
+          onClick={onExportImage}
+          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl transition shadow-sm"
+        >
+          <Download className="w-4 h-4" /> 이미지로 내보내기
+        </button>
+      </div>
+    </header>
+  )
+}
+</file>
+
+<file path="components/NavigationDock.tsx">
+'use client'
+
+import React from 'react'
+import Link from 'next/link'
+import { CheckSquare, BookOpen, Clock } from 'lucide-react'
+
+interface NavigationDockProps {
+  activeTab: 'todos' | 'log' | 'notes' | 'planner'
+}
+
+export default function NavigationDock({ activeTab }: NavigationDockProps) {
+  const navItems = [
+    {
+      id: 'todos',
+      label: '할 일 관리',
+      href: '/',
+      icon: CheckSquare,
+    },
+    {
+      id: 'notes',
+      label: '노트/기획',
+      href: '/notes',
+      icon: BookOpen,
+    },
+    {
+      id: 'planner',
+      label: '일간 플래너',
+      href: '/planner',
+      icon: Clock,
+    },
+  ]
+
+  return (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40">
+      <nav className="flex items-center gap-1 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-2 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 shadow-xl">
+        {navItems.map((item) => {
+          const Icon = item.icon
+          const isActive = activeTab === item.id
+
+          return (
+            <Link
+              key={item.id}
+              href={item.href}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                isActive
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 dark:shadow-none'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/60 dark:hover:bg-slate-800/60'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              <span>{item.label}</span>
+            </Link>
+          )
+        })}
+      </nav>
+    </div>
+  )
+}
+</file>
+
+<file path="components/NoteModal.tsx">
+'use client'
+
+import React, { useState, useEffect } from 'react'
+import { X } from 'lucide-react'
+import { Category, Note } from '@/types'
+
+interface NoteModalProps {
+  isOpen: boolean
+  onClose: () => void
+  categories: Category[]
+  initialNote?: Note | null
+  onSubmit: (title: string, category: string, content: string, id?: string) => void
+}
+
+export default function NoteModal({
+  isOpen,
+  onClose,
+  categories,
+  initialNote,
+  onSubmit,
+}: NoteModalProps) {
+  const [title, setTitle] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState('')
+  const [content, setContent] = useState('')
+
+  useEffect(() => {
+    if (initialNote) {
+      setTitle(initialNote.title || '')
+      setSelectedCategory(initialNote.category || '')
+      setContent(initialNote.content || '')
+    } else {
+      setTitle('')
+      setSelectedCategory('')
+      setContent('')
+    }
+  }, [initialNote, isOpen])
+
+  if (!isOpen) return null
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!title.trim()) return
+
+    onSubmit(title.trim(), selectedCategory, content, initialNote?.id)
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-2xl p-8 relative max-h-[90vh] flex flex-col">
+        <button
+          onClick={onClose}
+          className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition"
+        >
+          <X className="w-6 h-6" />
+        </button>
+
+        <h3 className="text-xl font-bold mb-6 text-slate-800 dark:text-slate-100">
+          {initialNote ? '노트 수정' : '새 노트/기획 작성'}
+        </h3>
+
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col space-y-5 overflow-y-auto pr-1">
+          <div>
+            <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-2 block uppercase tracking-wider">
+              제목
+            </label>
+            <input
+              type="text"
+              placeholder="노트 제목을 입력하세요 (예: 웹 앱 아이디어 명세)"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              autoFocus
+              className="input h-12 w-full bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 rounded-2xl text-sm px-4 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-2 block uppercase tracking-wider">
+              카테고리
+            </label>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="select h-12 w-full bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 rounded-2xl text-sm px-4 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition"
+            >
+              <option value="">미분류 노트</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.name}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex-1 flex flex-col min-h-[200px]">
+            <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-2 block uppercase tracking-wider">
+              내용
+            </label>
+            <textarea
+              placeholder="아이디어나 기획 내용을 자유롭게 기록하세요..."
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              className="textarea flex-1 w-full bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 rounded-2xl text-xs p-4 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition resize-none leading-relaxed"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn h-12 px-6 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-2xl text-xs font-semibold transition"
+            >
+              취소
+            </button>
+            <button
+              type="submit"
+              className="btn h-12 px-8 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xs font-semibold shadow-lg shadow-indigo-200 dark:shadow-none transition"
+            >
+              {initialNote ? '수정하기' : '작성하기'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+</file>
+
+<file path="components/TodoBacklog.tsx">
+import React, { useState } from 'react'
+import { Todo, Category } from '../types'
+import { Plus, CheckSquare, Trash2 } from 'lucide-react'
+
+interface TodoBacklogProps {
+  todos: Todo[]
+  categories: Category[]
+  loading: boolean
+  onAddTodo: (title: string, category: string) => void
+  onToggleComplete: (id: string, currentStatus: boolean) => void
+  onDeleteTodo: (id: string) => void
+  getColorClasses: (catName: string) => { badge: string; block: string }
+}
+
+export default function TodoBacklog({
+  todos,
+  categories,
+  loading,
+  onAddTodo,
+  onToggleComplete,
+  onDeleteTodo,
+  getColorClasses,
+}: TodoBacklogProps) {
+  const [newTodo, setNewTodo] = useState('')
+  const [category, setCategory] = useState(categories[0]?.name || '공부')
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newTodo.trim()) return
+    onAddTodo(newTodo.trim(), category)
+    setNewTodo('')
+  }
+
+  return (
+    <section className="md:col-span-5 bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors flex flex-col h-[750px]">
+      <div className="flex items-center gap-2 mb-4">
+        <CheckSquare className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+        <h2 className="text-lg font-bold text-slate-900 dark:text-white">할 일 백로그</h2>
+      </div>
+
+      <form onSubmit={handleSubmit} className="mb-4">
+        <fieldset className="fieldset bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 rounded-2xl border p-4 w-full">
+          <legend className="fieldset-legend text-xs font-semibold px-2 text-slate-500 dark:text-slate-400">새 할 일 추가</legend>
+
+          <div className="flex gap-2 items-end">
+            <div className="flex-1">
+              <label className="label text-xs font-medium text-slate-600 dark:text-slate-300 mb-1 block">할 일 제목</label>
+              <input
+                type="text"
+                placeholder="예: 리액트 공부하기"
+                value={newTodo}
+                onChange={(e) => setNewTodo(e.target.value)}
+                className="input input-sm w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-xl focus:outline-none"
+              />
+            </div>
+
+            <div className="w-28">
+              <label className="label text-xs font-medium text-slate-600 dark:text-slate-300 mb-1 block">카테고리</label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="select select-sm w-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-xl focus:outline-none text-xs"
+              >
+                {categories.map((c) => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <button type="submit" className="btn btn-sm bg-indigo-600 hover:bg-indigo-700 text-white border-none rounded-xl">
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+        </fieldset>
+      </form>
+
+      <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+        {loading ? (
+          <p className="text-sm text-slate-400 text-center py-8">불러오는 중...</p>
+        ) : todos.length === 0 ? (
+          <p className="text-sm text-slate-400 text-center py-8">등록된 할 일이 없습니다.</p>
+        ) : (
+          todos.map((todo) => (
+            <div
+              key={todo.id}
+              className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-800 transition group"
+            >
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={todo.completed}
+                  onChange={() => onToggleComplete(todo.id, todo.completed)}
+                  className="checkbox checkbox-sm checkbox-primary cursor-pointer"
+                />
+                <span className={`text-sm ${todo.completed ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-200'}`}>
+                  {todo.title}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-xs px-2 py-1 border rounded-lg font-medium ${getColorClasses(todo.category).badge}`}>
+                  {todo.category}
+                </span>
+                <button
+                  onClick={() => onDeleteTodo(todo.id)}
+                  className="text-slate-400 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </section>
+  )
+}
+</file>
+
+<file path="components/TodoCard.tsx">
+'use client'
+
+import React from 'react'
+import { Draggable } from '@hello-pangea/dnd'
+import { ChevronDown, ChevronUp, Calendar, AlertCircle } from 'lucide-react'
+import { Todo } from '@/types'
+import { calculateDDay } from '@/utils/date'
+
+interface TodoCardProps {
+  todo: Todo
+  index: number
+  isExpanded: boolean
+  toggleAccordion: (id: string) => void
+  handleToggleComplete: (todo: Todo) => void
+  handleToggleSubTask: (todo: Todo, subTaskId: string) => void
+}
+
+export default function TodoCard({
+  todo,
+  index,
+  isExpanded,
+  toggleAccordion,
+  handleToggleComplete,
+  handleToggleSubTask,
+}: TodoCardProps) {
+  const subTasks = todo.sub_tasks || []
+  const completedSubCount = subTasks.filter((st) => st.completed).length
+  const ddayInfo = calculateDDay(todo.due_date)
+
+  // D-Day 상태별 스타일 지정
+  const getDDayBadgeStyle = (status: string) => {
+    switch (status) {
+      case 'OVERDUE':
+        return 'bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400 font-bold border border-rose-200 dark:border-rose-900'
+      case 'TODAY':
+        return 'bg-amber-500 text-white font-bold animate-pulse shadow-sm shadow-amber-200 dark:shadow-none'
+      case 'URGENT':
+        return 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-semibold border border-amber-200 dark:border-amber-900'
+      case 'NORMAL':
+        return 'bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-medium border border-indigo-100 dark:border-indigo-900'
+      default:
+        return 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium'
+    }
+  }
+
+  return (
+    <Draggable key={todo.id} draggableId={todo.id} index={index}>
+      {(provided) => (
+        <div
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          {...provided.dragHandleProps}
+          className="p-3.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:border-indigo-300 dark:hover:border-indigo-700 transition flex flex-col gap-2.5"
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <input
+                type="checkbox"
+                checked={todo.completed}
+                onChange={() => handleToggleComplete(todo)}
+                className="checkbox checkbox-xs checkbox-primary cursor-pointer mt-0.5"
+              />
+              <span className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">
+                {todo.title}
+              </span>
+            </div>
+
+            {subTasks.length > 0 && (
+              <button
+                onClick={() => toggleAccordion(todo.id)}
+                className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-indigo-500 font-mono transition shrink-0"
+              >
+                <span>
+                  {completedSubCount}/{subTasks.length}
+                </span>
+                {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              </button>
+            )}
+          </div>
+
+          {/* D-Day & 마감일 표시 바 */}
+          {ddayInfo && (
+            <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800/60">
+              <div className="flex items-center gap-1 text-[11px] text-slate-400 font-mono">
+                <Calendar className="w-3 h-3" />
+                <span>{todo.due_date}</span>
+              </div>
+
+              <span
+                className={`text-[10px] px-2 py-0.5 rounded-md flex items-center gap-1 font-mono ${getDDayBadgeStyle(
+                  ddayInfo.status
+                )}`}
+              >
+                {ddayInfo.status === 'OVERDUE' && <AlertCircle className="w-3 h-3 text-rose-500" />}
+                {ddayInfo.text}
+              </span>
+            </div>
+          )}
+
+          {/* 서브태스크 아코디언 */}
+          {isExpanded && subTasks.length > 0 && (
+            <div className="pl-4 pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
+              {subTasks.map((st) => (
+                <div key={st.id} className="flex items-center gap-2 text-[11px]">
+                  <input
+                    type="checkbox"
+                    checked={st.completed}
+                    onChange={() => handleToggleSubTask(todo, st.id)}
+                    className="checkbox checkbox-xs border-slate-300 cursor-pointer"
+                  />
+                  <span
+                    className={
+                      st.completed
+                        ? 'line-through text-slate-400'
+                        : 'text-slate-700 dark:text-slate-300'
+                    }
+                  >
+                    {st.title}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </Draggable>
+  )
+}
+</file>
+
+<file path="components/TodoModal.tsx">
+'use client'
+
+import React, { useState } from 'react'
+import { X } from 'lucide-react'
+import { Category } from '@/types'
+
+interface TodoModalProps {
+  isOpen: boolean
+  onClose: () => void
+  categories: Category[]
+  onSubmit: (title: string, category: string, dueDate: string, subTasks: string[]) => void
+}
+
+export default function TodoModal({ isOpen, onClose, categories, onSubmit }: TodoModalProps) {
+  const [title, setTitle] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState('')
+  const [dueDate, setDueDate] = useState('')
+  const [subInputs, setSubInputs] = useState<string[]>([''])
+
+  if (!isOpen) return null
+
+  const handleAddSubInput = () => setSubInputs([...subInputs, ''])
+  const handleSubInputChange = (index: number, val: string) => {
+    const next = [...subInputs]
+    next[index] = val
+    setSubInputs(next)
+  }
+  const handleRemoveSubInput = (index: number) => {
+    setSubInputs(subInputs.filter((_, i) => i !== index))
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!title.trim()) return
+
+    const validSubTasks = subInputs.filter((s) => s.trim() !== '')
+    onSubmit(title.trim(), selectedCategory, dueDate, validSubTasks)
+
+    setTitle('')
+    setSelectedCategory('')
+    setDueDate('')
+    setSubInputs([''])
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-xl p-8 relative max-h-[90vh] overflow-y-auto">
+        <button
+          onClick={onClose}
+          className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition"
+        >
+          <X className="w-6 h-6" />
+        </button>
+
+        <h3 className="text-xl font-bold mb-6 text-slate-800 dark:text-slate-100">새 할 일 추가</h3>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-2 block uppercase tracking-wider">
+              할 일 제목
+            </label>
+            <input
+              type="text"
+              placeholder="예: 토익스피킹 Part 3 모의고사 풀이"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              autoFocus
+              className="input h-12 w-full bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 rounded-2xl text-sm px-4 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-2 block uppercase tracking-wider">
+                카테고리 지정
+              </label>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="select h-12 w-full bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 rounded-2xl text-sm px-4 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition"
+              >
+                <option value="">수집함 (미분류)</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.name}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-2 block uppercase tracking-wider">
+                마감기한 (선택)
+              </label>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="input h-12 w-full bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 rounded-2xl text-sm px-4 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition"
+              />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                세부 하위 항목 (선택)
+              </label>
+              <button
+                type="button"
+                onClick={handleAddSubInput}
+                className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 hover:underline transition"
+              >
+                + 항목 추가
+              </button>
+            </div>
+
+            <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
+              {subInputs.map((sub, idx) => (
+                <div key={idx} className="flex gap-3 items-center">
+                  <input
+                    type="text"
+                    placeholder={`세부 항목 ${idx + 1} (예: 1회차 오답노트 작성)`}
+                    value={sub}
+                    onChange={(e) => handleSubInputChange(idx, e.target.value)}
+                    className="input h-11 flex-1 bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 rounded-xl text-xs px-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition"
+                  />
+                  {subInputs.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSubInput(idx)}
+                      className="p-2 text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn h-12 px-6 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-2xl text-xs font-semibold transition"
+            >
+              취소
+            </button>
+            <button
+              type="submit"
+              className="btn h-12 px-8 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xs font-semibold shadow-lg shadow-indigo-200 dark:shadow-none transition"
+            >
+              추가하기
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+</file>
+
+<file path="public/file.svg">
+<svg fill="none" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M14.5 13.5V5.41a1 1 0 0 0-.3-.7L9.8.29A1 1 0 0 0 9.08 0H1.5v13.5A2.5 2.5 0 0 0 4 16h8a2.5 2.5 0 0 0 2.5-2.5m-1.5 0v-7H8v-5H3v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1M9.5 5V2.12L12.38 5zM5.13 5h-.62v1.25h2.12V5zm-.62 3h7.12v1.25H4.5zm.62 3h-.62v1.25h7.12V11z" clip-rule="evenodd" fill="#666" fill-rule="evenodd"/></svg>
+</file>
+
+<file path="public/globe.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><g clip-path="url(#a)"><path fill-rule="evenodd" clip-rule="evenodd" d="M10.27 14.1a6.5 6.5 0 0 0 3.67-3.45q-1.24.21-2.7.34-.31 1.83-.97 3.1M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m.48-1.52a7 7 0 0 1-.96 0H7.5a4 4 0 0 1-.84-1.32q-.38-.89-.63-2.08a40 40 0 0 0 3.92 0q-.25 1.2-.63 2.08a4 4 0 0 1-.84 1.31zm2.94-4.76q1.66-.15 2.95-.43a7 7 0 0 0 0-2.58q-1.3-.27-2.95-.43a18 18 0 0 1 0 3.44m-1.27-3.54a17 17 0 0 1 0 3.64 39 39 0 0 1-4.3 0 17 17 0 0 1 0-3.64 39 39 0 0 1 4.3 0m1.1-1.17q1.45.13 2.69.34a6.5 6.5 0 0 0-3.67-3.44q.65 1.26.98 3.1M8.48 1.5l.01.02q.41.37.84 1.31.38.89.63 2.08a40 40 0 0 0-3.92 0q.25-1.2.63-2.08a4 4 0 0 1 .85-1.32 7 7 0 0 1 .96 0m-2.75.4a6.5 6.5 0 0 0-3.67 3.44 29 29 0 0 1 2.7-.34q.31-1.83.97-3.1M4.58 6.28q-1.66.16-2.95.43a7 7 0 0 0 0 2.58q1.3.27 2.95.43a18 18 0 0 1 0-3.44m.17 4.71q-1.45-.12-2.69-.34a6.5 6.5 0 0 0 3.67 3.44q-.65-1.27-.98-3.1" fill="#666"/></g><defs><clipPath id="a"><path fill="#fff" d="M0 0h16v16H0z"/></clipPath></defs></svg>
+</file>
+
+<file path="public/next.svg">
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 394 80"><path fill="#000" d="M262 0h68.5v12.7h-27.2v66.6h-13.6V12.7H262V0ZM149 0v12.7H94v20.4h44.3v12.6H94v21h55v12.6H80.5V0h68.7zm34.3 0h-17.8l63.8 79.4h17.9l-32-39.7 32-39.6h-17.9l-23 28.6-23-28.6zm18.3 56.7-9-11-27.1 33.7h17.8l18.3-22.7z"/><path fill="#000" d="M81 79.3 17 0H0v79.3h13.6V17l50.2 62.3H81Zm252.6-.4c-1 0-1.8-.4-2.5-1s-1.1-1.6-1.1-2.6.3-1.8 1-2.5 1.6-1 2.6-1 1.8.3 2.5 1a3.4 3.4 0 0 1 .6 4.3 3.7 3.7 0 0 1-3 1.8zm23.2-33.5h6v23.3c0 2.1-.4 4-1.3 5.5a9.1 9.1 0 0 1-3.8 3.5c-1.6.8-3.5 1.3-5.7 1.3-2 0-3.7-.4-5.3-1s-2.8-1.8-3.7-3.2c-.9-1.3-1.4-3-1.4-5h6c.1.8.3 1.6.7 2.2s1 1.2 1.6 1.5c.7.4 1.5.5 2.4.5 1 0 1.8-.2 2.4-.6a4 4 0 0 0 1.6-1.8c.3-.8.5-1.8.5-3V45.5zm30.9 9.1a4.4 4.4 0 0 0-2-3.3 7.5 7.5 0 0 0-4.3-1.1c-1.3 0-2.4.2-3.3.5-.9.4-1.6 1-2 1.6a3.5 3.5 0 0 0-.3 4c.3.5.7.9 1.3 1.2l1.8 1 2 .5 3.2.8c1.3.3 2.5.7 3.7 1.2a13 13 0 0 1 3.2 1.8 8.1 8.1 0 0 1 3 6.5c0 2-.5 3.7-1.5 5.1a10 10 0 0 1-4.4 3.5c-1.8.8-4.1 1.2-6.8 1.2-2.6 0-4.9-.4-6.8-1.2-2-.8-3.4-2-4.5-3.5a10 10 0 0 1-1.7-5.6h6a5 5 0 0 0 3.5 4.6c1 .4 2.2.6 3.4.6 1.3 0 2.5-.2 3.5-.6 1-.4 1.8-1 2.4-1.7a4 4 0 0 0 .8-2.4c0-.9-.2-1.6-.7-2.2a11 11 0 0 0-2.1-1.4l-3.2-1-3.8-1c-2.8-.7-5-1.7-6.6-3.2a7.2 7.2 0 0 1-2.4-5.7 8 8 0 0 1 1.7-5 10 10 0 0 1 4.3-3.5c2-.8 4-1.2 6.4-1.2 2.3 0 4.4.4 6.2 1.2 1.8.8 3.2 2 4.3 3.4 1 1.4 1.5 3 1.5 5h-5.8z"/></svg>
+</file>
+
+<file path="public/vercel.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1155 1000"><path d="m577.3 0 577.4 1000H0z" fill="#fff"/></svg>
+</file>
+
+<file path="public/window.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" clip-rule="evenodd" d="M1.5 2.5h13v10a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1zM0 1h16v11.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 0 12.5zm3.75 4.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5M7 4.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0m1.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5" fill="#666"/></svg>
+</file>
+
+<file path="services/plannerService.ts">
+import { supabase } from '../lib/supabaseClient'
+import { Todo, Category, Note } from '@/types'
+
+// ==========================================
+// 1. 카테고리 (Categories)
+// ==========================================
+
+export async function fetchCategories(type: 'todo' | 'note' = 'todo'): Promise<Category[]> {
+  try {
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .eq('type', type)
+      .order('created_at', { ascending: true })
+
+    if (error) {
+      console.error('fetchCategories error:', error)
+      return []
+    }
+    return data || []
+  } catch (err) {
+    console.error('fetchCategories unexpected error:', err)
+    return []
+  }
+}
+
+export async function addCategory(name: string, type: 'todo' | 'note' = 'todo'): Promise<Category | null> {
+  try {
+    const { data, error } = await supabase
+      .from('categories')
+      .insert([{ name, type }])
+      .select()
+      .single()
+
+    if (error) {
+      alert(`[카테고리 추가 실패]\n${error.message}`)
+      console.error('addCategory error:', error)
+      return null
+    }
+    return data
+  } catch (err) {
+    console.error('addCategory unexpected error:', err)
+    return null
+  }
+}
+
+export async function updateCategory(id: string, name: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('categories')
+      .update({ name })
+      .eq('id', id)
+
+    if (error) {
+      alert(`[카테고리 수정 실패]\n${error.message}`)
+      console.error('updateCategory error:', error)
+      return false
+    }
+    return true
+  } catch (err) {
+    console.error('updateCategory unexpected error:', err)
+    return false
+  }
+}
+
+export async function deleteCategory(id: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('categories')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      alert(`[카테고리 삭제 실패]\n${error.message}`)
+      console.error('deleteCategory error:', error)
+      return false
+    }
+    return true
+  } catch (err) {
+    console.error('deleteCategory unexpected error:', err)
+    return false
+  }
+}
+
+// ==========================================
+// 2. 할 일 (Todos)
+// ==========================================
+
+export async function fetchTodos(): Promise<Todo[]> {
+  try {
+    const { data, error } = await supabase
+      .from('todos')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('fetchTodos error:', error)
+      return []
+    }
+    return data || []
+  } catch (err) {
+    console.error('fetchTodos unexpected error:', err)
+    return []
+  }
+}
+
+export async function addTodo(
+  title: string,
+  category: string,
+  subTasks: string[],
+  dueDate: string | null = null
+): Promise<Todo | null> {
+  try {
+    const formattedSubTasks = subTasks.map((st, idx) => ({
+      id: `${Date.now()}-${idx}`,
+      title: st,
+      completed: false,
+    }))
+
+    const { data, error } = await supabase
+      .from('todos')
+      .insert([
+        {
+          title,
+          category,
+          due_date: dueDate,
+          sub_tasks: formattedSubTasks,
+          completed: false,
+        },
+      ])
+      .select()
+      .single()
+
+    if (error) {
+      alert(`[할 일 추가 실패]\n${error.message}`)
+      console.error('addTodo error:', error)
+      return null
+    }
+    return data
+  } catch (err) {
+    console.error('addTodo unexpected error:', err)
+    return null
+  }
+}
+
+export async function updateTodoCategory(id: string, category: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('todos')
+      .update({ category })
+      .eq('id', id)
+
+    if (error) {
+      console.error('updateTodoCategory error:', error)
+      return false
+    }
+    return true
+  } catch (err) {
+    console.error('updateTodoCategory unexpected error:', err)
+    return false
+  }
+}
+
+export async function toggleTodoComplete(id: string, currentCompleted: boolean): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('todos')
+      .update({ completed: !currentCompleted })
+      .eq('id', id)
+
+    if (error) {
+      console.error('toggleTodoComplete error:', error)
+      return false
+    }
+    return true
+  } catch (err) {
+    console.error('toggleTodoComplete unexpected error:', err)
+    return false
+  }
+}
+
+export async function updateSubTasks(id: string, subTasks: any[]): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('todos')
+      .update({ sub_tasks: subTasks })
+      .eq('id', id)
+
+    if (error) {
+      console.error('updateSubTasks error:', error)
+      return false
+    }
+    return true
+  } catch (err) {
+    console.error('updateSubTasks unexpected error:', err)
+    return false
+  }
+}
+
+export async function deleteTodoPermanently(id: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.from('todos').delete().eq('id', id)
+
+    if (error) {
+      console.error('deleteTodoPermanently error:', error)
+      return false
+    }
+    return true
+  } catch (err) {
+    console.error('deleteTodoPermanently unexpected error:', err)
+    return false
+  }
+}
+
+// ==========================================
+// 3. 기획 & 노트 (Notes)
+// ==========================================
+
+export async function fetchNotes(): Promise<Note[]> {
+  try {
+    const { data, error } = await supabase
+      .from('notes')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('fetchNotes error:', error)
+      return []
+    }
+    return data || []
+  } catch (err) {
+    console.error('fetchNotes unexpected error:', err)
+    return []
+  }
+}
+
+export async function addNote(
+  title: string,
+  category: string,
+  content: string
+): Promise<Note | null> {
+  try {
+    const { data, error } = await supabase
+      .from('notes')
+      .insert([
+        {
+          title,
+          category,
+          content,
+        },
+      ])
+      .select()
+      .single()
+
+    if (error) {
+      alert(`[노트 저장 실패]\n${error.message}`)
+      console.error('addNote error:', error)
+      return null
+    }
+    return data
+  } catch (err) {
+    console.error('addNote unexpected error:', err)
+    return null
+  }
+}
+
+export async function updateNote(
+  id: string,
+  title: string,
+  category: string,
+  content: string
+): Promise<Note | null> {
+  try {
+    const { data, error } = await supabase
+      .from('notes')
+      .update({ title, category, content, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      alert(`[노트 수정 실패]\n${error.message}`)
+      console.error('updateNote error:', error)
+      return null
+    }
+    return data
+  } catch (err) {
+    console.error('updateNote unexpected error:', err)
+    return null
+  }
+}
+
+export async function deleteNote(id: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.from('notes').delete().eq('id', id)
+
+    if (error) {
+      alert(`[노트 삭제 실패]\n${error.message}`)
+      console.error('deleteNote error:', error)
+      return false
+    }
+    return true
+  } catch (err) {
+    console.error('deleteNote unexpected error:', err)
+    return false
+  }
+}
+
+// ==========================================
+// 4. 타임블록 (Time Blocks)
+// ==========================================
+
+export async function fetchTimeBlocks() {
+  try {
+    const { data, error } = await supabase
+      .from('time_blocks')
+      .select('*')
+      .order('start_hour', { ascending: true })
+
+    if (error) {
+      console.error('fetchTimeBlocks error:', error)
+      return []
+    }
+    return data || []
+  } catch (err) {
+    console.error('fetchTimeBlocks unexpected error:', err)
+    return []
+  }
+}
+
+export async function addTimeBlock(
+  title: string,
+  startHour: number,
+  endHour: number,
+  color: string
+) {
+  try {
+    const { data, error } = await supabase
+      .from('time_blocks')
+      .insert([{ title, start_hour: startHour, end_hour: endHour, color }])
+      .select()
+      .single()
+
+    if (error) {
+      alert(`[타임블록 DB 저장 실패]\n에러 메시지: ${error.message}\n코드: ${error.code}`)
+      console.error('addTimeBlock error:', error)
+      return null
+    }
+    return data
+  } catch (err: any) {
+    alert(`[시스템 오류] ${err.message || err}`)
+    console.error('addTimeBlock unexpected error:', err)
+    return null
+  }
+}
+
+export async function deleteTimeBlock(id: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.from('time_blocks').delete().eq('id', id)
+    if (error) {
+      alert(`[타임블록 삭제 실패]\n${error.message}`)
+      console.error('deleteTimeBlock error:', error)
+      return false
+    }
+    return true
+  } catch (err) {
+    console.error('deleteTimeBlock unexpected error:', err)
+    return false
+  }
+}
+
+// ==========================================
+// 5. 데이터 백업 & 복원 (Export / Import)
+// ==========================================
+
+export async function exportAllData() {
+  try {
+    const [categories, todos, notes, timeBlocks] = await Promise.all([
+      fetchCategories(),
+      fetchTodos(),
+      fetchNotes(),
+      fetchTimeBlocks(),
+    ])
+
+    return {
+      version: '1.0',
+      exported_at: new Date().toISOString(),
+      categories,
+      todos,
+      notes,
+      timeBlocks,
+    }
+  } catch (err) {
+    console.error('exportAllData error:', err)
+    return null
+  }
+}
+
+export async function importAllData(parsedData: any): Promise<boolean> {
+  try {
+    if (!parsedData || !parsedData.todos || !parsedData.categories) {
+      throw new Error('Invalid JSON format')
+    }
+
+    await supabase.from('todos').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    await supabase.from('categories').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    await supabase.from('notes').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    await supabase.from('time_blocks').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+
+    if (parsedData.categories.length > 0) {
+      const catInserts = parsedData.categories.map((c: any) => ({
+        name: c.name,
+        type: c.type || 'todo',
+      }))
+      await supabase.from('categories').insert(catInserts)
+    }
+
+    if (parsedData.todos.length > 0) {
+      const todoInserts = parsedData.todos.map((t: any) => ({
+        title: t.title,
+        category: t.category,
+        due_date: t.due_date,
+        sub_tasks: t.sub_tasks || [],
+        completed: t.completed || false,
+      }))
+      await supabase.from('todos').insert(todoInserts)
+    }
+
+    if (parsedData.notes && parsedData.notes.length > 0) {
+      const noteInserts = parsedData.notes.map((n: any) => ({
+        title: n.title,
+        category: n.category,
+        content: n.content,
+      }))
+      await supabase.from('notes').insert(noteInserts)
+    }
+
+    if (parsedData.timeBlocks && parsedData.timeBlocks.length > 0) {
+      const blockInserts = parsedData.timeBlocks.map((b: any) => ({
+        title: b.title,
+        start_hour: b.start_hour,
+        end_hour: b.end_hour,
+        color: b.color,
+      }))
+      await supabase.from('time_blocks').insert(blockInserts)
+    }
+
+    return true
+  } catch (err) {
+    console.error('importAllData error:', err)
+    return false
+  }
+}
+</file>
+
+<file path="types/index.ts">
+export interface SubTask {
+  id: string
+  title: string
+  completed: boolean
+}
+
+export interface Todo {
+  id: string
+  title: string
+  category: string
+  completed: boolean
+  sub_tasks?: SubTask[]
+  due_date?: string | null // YYYY-MM-DD 형식의 마감기한 (선택)
+  created_at?: string
+}
+
+export interface Category {
+  id: string
+  name: string
+  color?: string
+  type?: 'todo' | 'note' // 할 일용 / 메모장용 카테고리 구분
+}
+
+export interface DailyLog {
+  id: string
+  date: string
+  completed_todo_ids: string[]
+}
+
+export interface Note {
+  id: string
+  title: string
+  content: string
+  category: string
+  created_at?: string
+  updated_at?: string
+}
+</file>
+
+<file path="utils/date.ts">
+export interface DDayInfo {
+  text: string
+  status: 'OVERDUE' | 'TODAY' | 'URGENT' | 'NORMAL' | 'FAR'
+  diffDays: number
+}
+
+export function calculateDDay(dueDateStr: string | null | undefined): DDayInfo | null {
+  if (!dueDateStr) return null
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const targetDate = new Date(dueDateStr)
+  targetDate.setHours(0, 0, 0, 0)
+
+  const diffTime = targetDate.getTime() - today.getTime()
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+  if (diffDays < 0) {
+    return {
+      text: `마감 지남 (D+${Math.abs(diffDays)})`,
+      status: 'OVERDUE',
+      diffDays,
+    }
+  }
+
+  if (diffDays === 0) {
+    return { text: 'D-Day', status: 'TODAY', diffDays }
+  }
+
+  if (diffDays <= 3) {
+    return { text: `D-${diffDays}`, status: 'URGENT', diffDays }
+  }
+
+  if (diffDays <= 30) {
+    return { text: `D-${diffDays}`, status: 'NORMAL', diffDays }
+  }
+
+  return { text: `${dueDateStr}까지`, status: 'FAR', diffDays }
+}
+</file>
+
+<file path="utils/sort.ts">
+import { Todo } from '@/types'
+
+export type SortOption = 'dueDate' | 'alphabetical' | 'latest'
+
+export function sortTodos(todos: Todo[], sortBy: SortOption): Todo[] {
+  return [...todos].sort((a, b) => {
+    if (sortBy === 'dueDate') {
+      if (!a.due_date && !b.due_date) return 0
+      if (!a.due_date) return 1
+      if (!b.due_date) return -1
+      return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+    }
+
+    if (sortBy === 'alphabetical') {
+      return a.title.localeCompare(b.title, 'ko')
+    }
+
+    if (sortBy === 'latest') {
+      return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+    }
+
+    return 0
+  })
+}
+
+export function filterTodos(todos: Todo[], searchQuery: string): Todo[] {
+  if (!searchQuery.trim()) return todos
+
+  const query = searchQuery.toLowerCase().trim()
+  return todos.filter((todo) => {
+    const titleMatch = todo.title.toLowerCase().includes(query)
+    const subTaskMatch = (todo.sub_tasks || []).some((st) =>
+      st.title.toLowerCase().includes(query)
+    )
+    return titleMatch || subTaskMatch
+  })
+}
+</file>
+
+<file path=".gitignore">
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+</file>
+
+<file path="AGENTS.md">
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
+</file>
+
+<file path="CLAUDE.md">
+@AGENTS.md
+</file>
+
+<file path="eslint.config.mjs">
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTs from "eslint-config-next/typescript";
+
+const eslintConfig = defineConfig([
+  ...nextVitals,
+  ...nextTs,
+  // Override default ignores of eslint-config-next.
+  globalIgnores([
+    // Default ignores of eslint-config-next:
+    ".next/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+  ]),
+]);
+
+export default eslintConfig;
+</file>
+
+<file path="next.config.ts">
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  /* config options here */
+};
+
+export default nextConfig;
+</file>
+
+<file path="package.json">
+{
+  "name": "my-productivity-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@hello-pangea/dnd": "^18.0.1",
+    "@supabase/supabase-js": "^2.117.3",
+    "html-to-image": "^1.11.13",
+    "html2canvas": "^1.4.1",
+    "lucide-react": "^1.52.0",
+    "next": "16.3.7",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.7",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
+</file>
+
+<file path="postcss.config.mjs">
+const config = {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+};
+
+export default config;
+</file>
+
+<file path="PROJECT_CONTEXT.md">
+# Project Context: my-productivity-app
+
+## 1. Project Overview & Status
+- **App Name**: my-productivity-app
+- **Repository**: `england10321-afk/my-productivity-app` (main branch)
+- **Supabase Project ID**: `tcpqhvhagqyaljmyudkt`
+- **Deployment Status**: Fully deployed on Vercel with active environment variables (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`).
+- **Current Feature State**:
+  - Real-time DB sync between client (PC/Mobile/Tablet) and Supabase is fully active and verified.
+  - Build errors related to invalid Supabase URL and prerender fallback/fallback configuration have been completely resolved.
+
+## 2. Tech Stack & Environment
+- **Framework**: Next.js (App Router, Turbopack)
+- **Language**: TypeScript
+- **Database / Auth**: Supabase (`@supabase/supabase-js`)
+- **Styling**: Tailwind CSS
+- **Deployment & Hosting**: Vercel
+
+## 3. Architecture & Key Files Map
+- `types/index.ts`: Centralized TypeScript interfaces for all productivity items (Todos, Planner Items, Logs, Categories).
+- `services/plannerService.ts`: Core Supabase CRUD operations for fetching, creating, updating, and deleting tasks and daily log items.
+- `app/planner/page.tsx`: Main Planner dashboard view handling task creation, status updates, and view rendering.
+- `app/log/page.tsx`: Daily log view tracking completed activities and history.
+- `lib/` or `services/`: Supabase client initialization configured to avoid prerender/build failures.
+
+## 4. Supabase DB Schema & Conventions
+- **Tables**:
+  - `todos` / `planner_items`: Stores task items linked with timestamps and completion status.
+- **Environment Variables**:
+  - Configured as `Config` type in Vercel to bypass build-time persistence issues.
+  - Active DB queries prevent automatic Supabase pausing (free-tier policy).
+
+## 5. Development Guidelines & Workflow Rules
+- **Data Integrity**: Always respect existing type declarations in `types/index.ts` and column naming conventions in `services/plannerService.ts`.
+- **State Management**: Changes must update both local client state and trigger Supabase sync asynchronously.
+- **Git Routine**: After every feature addition or modification, push commits to `main` branch on GitHub so Gitingest can ingest the complete updated repo state.
+</file>
+
+<file path="README.md">
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+
+## Getting Started
+
+First, run the development server:
+
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## Learn More
+
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": ["node_modules"]
+}
+</file>
+
+<file path="lib/supabaseClient.ts">
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://placeholder.supabase.co'
+}
+if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'placeholder'
+}
+
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+</file>
+
+</files>

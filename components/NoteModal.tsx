@@ -56,7 +56,7 @@ export default function NoteModal({
         </button>
 
         <h3 className="text-xl font-bold mb-6 text-slate-800 dark:text-slate-100">
-          {initialNote ? '노트 수정' : '새 노트/기획 작성'}
+          {initialNote ? '노트 수정' : '새 노트 작성'}
         </h3>
 
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col space-y-5 overflow-y-auto pr-1">
@@ -66,7 +66,7 @@ export default function NoteModal({
             </label>
             <input
               type="text"
-              placeholder="노트 제목을 입력하세요 (예: 웹 앱 아이디어 명세)"
+              placeholder="노트 제목을 입력하세요 (예: 아이디어 메모)"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               autoFocus
@@ -97,7 +97,7 @@ export default function NoteModal({
               내용
             </label>
             <textarea
-              placeholder="아이디어나 기획 내용을 자유롭게 기록하세요..."
+              placeholder="노트 내용을 자유롭게 기록하세요..."
               value={content}
               onChange={(e) => setContent(e.target.value)}
               className="textarea flex-1 w-full bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 rounded-2xl text-xs p-4 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition resize-none leading-relaxed"
