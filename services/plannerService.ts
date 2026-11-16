@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabaseClient'
-import { Todo, Category, Note, SubTask } from '@/types'
+import { Todo, Category, Note, SubTask, SharedItem } from '@/types'
 
 // ==========================================
 // 1. 카테고리 (Categories)
@@ -540,6 +540,133 @@ export async function importAllData(parsedData: any): Promise<boolean> {
     return true
   } catch (err) {
     console.error('importAllData error:', err)
+    return false
+  }
+}
+
+// ==========================================
+// 6. 기기 간 자료 공유함 (Shared Items)
+// ==========================================
+
+export async function fetchSharedItems(): Promise<SharedItem[]> {
+  try {
+    const { data, error } = await supabase
+      .from('shared_items')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('fetchSharedItems error:', error)
+      return []
+    }
+    return data || []
+  } catch (err) {
+    console.error('fetchSharedItems unexpected error:', err)
+    return []
+  }
+}
+
+export async function addSharedText(
+  content: string,
+  title: string = ''
+): Promise<SharedItem | null> {
+  try {
+    const { data, error } = await supabase
+      .from('shared_items')
+      .insert([
+        {
+          type: 'text',
+          title: title.trim() || null,
+          content: content.trim(),
+        },
+      ])
+      .select()
+      .single()
+
+    if (error) {
+      alert(`[텍스트 전송 실패]\n${error.message}`)
+      console.error('addSharedText error:', error)
+      return null
+    }
+    return data
+  } catch (err) {
+    console.error('addSharedText unexpected error:', err)
+    return null
+  }
+}
+
+export async function uploadSharedFile(file: File): Promise<SharedItem | null> {
+  try {
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'bin'
+    const safePath = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('shared-files')
+      .upload(safePath, file, {
+        cacheControl: '3600',
+        upsert: false,
+      })
+
+    if (uploadError) {
+      alert(`[파일 업로드 실패]\n${uploadError.message}`)
+      console.error('uploadSharedFile storage error:', uploadError)
+      return null
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from('shared-files')
+      .getPublicUrl(safePath)
+
+    let itemType: 'image' | 'pdf' | 'file' = 'file'
+    if (file.type.startsWith('image/')) {
+      itemType = 'image'
+    } else if (file.type === 'application/pdf' || ext === 'pdf') {
+      itemType = 'pdf'
+    }
+
+    const { data, error: dbError } = await supabase
+      .from('shared_items')
+      .insert([
+        {
+          type: itemType,
+          title: file.name,
+          file_url: publicUrlData.publicUrl,
+          file_path: safePath,
+          file_size: file.size,
+        },
+      ])
+      .select()
+      .single()
+
+    if (dbError) {
+      alert(`[파일 정보 저장 실패]\n${dbError.message}`)
+      console.error('uploadSharedFile db error:', dbError)
+      return null
+    }
+
+    return data
+  } catch (err) {
+    console.error('uploadSharedFile unexpected error:', err)
+    return null
+  }
+}
+
+export async function deleteSharedItem(item: SharedItem): Promise<boolean> {
+  try {
+    if (item.file_path) {
+      await supabase.storage.from('shared-files').remove([item.file_path])
+    }
+
+    const { error } = await supabase.from('shared_items').delete().eq('id', item.id)
+
+    if (error) {
+      alert(`[자료 삭제 실패]\n${error.message}`)
+      console.error('deleteSharedItem error:', error)
+      return false
+    }
+    return true
+  } catch (err) {
+    console.error('deleteSharedItem unexpected error:', err)
     return false
   }
 }

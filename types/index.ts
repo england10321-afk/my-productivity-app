@@ -38,3 +38,14 @@ export interface Note {
   created_at?: string
   updated_at?: string
 }
+
+export interface SharedItem {
+  id: string
+  type: 'text' | 'image' | 'pdf' | 'file'
+  title?: string | null
+  content?: string | null
+  file_url?: string | null
+  file_path?: string | null
+  file_size?: number | null
+  created_at?: string
+}
