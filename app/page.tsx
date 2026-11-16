@@ -15,8 +15,11 @@ import {
   Upload,
   Search,
   ArrowUpDown,
+  MoreVertical,
+  Pencil,
+  Clock,
 } from 'lucide-react'
-import { Category, Todo } from '@/types'
+import { Category, Todo, SubTask } from '@/types'
 import * as plannerService from '@/services/plannerService'
 import NavigationDock from '@/components/NavigationDock'
 import TodoCard from '@/components/TodoCard'
@@ -35,6 +38,10 @@ export default function TodosPage() {
 
   // 모달 및 서브 상태
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [modalInitialCategory, setModalInitialCategory] = useState('')
+  const [editingTodo, setEditingTodo] = useState<Todo | null>(null)
+  const [openInboxMenuId, setOpenInboxMenuId] = useState<string | null>(null)
+
   const [isCatManageModalOpen, setIsCatManageModalOpen] = useState(false)
   const [expandedTodoIds, setExpandedTodoIds] = useState<string[]>([])
   const [showCompleted, setShowCompleted] = useState(false)
@@ -45,6 +52,15 @@ export default function TodosPage() {
     loadData()
   }, [])
 
+  // 수집함 점 3개 드롭다운 바깥 클릭 닫기
+  useEffect(() => {
+    const handleOutsideClick = () => setOpenInboxMenuId(null)
+    if (openInboxMenuId) {
+      document.addEventListener('mousedown', handleOutsideClick)
+    }
+    return () => document.removeEventListener('mousedown', handleOutsideClick)
+  }, [openInboxMenuId])
+
   const loadData = async () => {
     setLoading(true)
     const [fetchedTodos, fetchedCats] = await Promise.all([
@@ -54,6 +70,19 @@ export default function TodosPage() {
     setTodos(fetchedTodos)
     setCategories(fetchedCats)
     setLoading(false)
+  }
+
+  // 모달 열기 헬퍼
+  const handleOpenAddModal = (categoryName = '') => {
+    setEditingTodo(null)
+    setModalInitialCategory(categoryName)
+    setIsModalOpen(true)
+  }
+
+  const handleOpenEditModal = (todo: Todo) => {
+    setEditingTodo(todo)
+    setModalInitialCategory(todo.category || '')
+    setIsModalOpen(true)
   }
 
   // 백업 & 복원
@@ -95,15 +124,41 @@ export default function TodosPage() {
     reader.readAsText(file)
   }
 
-  // 할 일 추가
+  // 할 일 추가 & 수정
   const handleAddTodoSubmit = async (
     title: string,
     category: string,
     dueDate: string,
-    subTasks: string[]
+    subTasks: string[],
+    startTime: string,
+    dueTime: string
   ) => {
-    const created = await plannerService.addTodo(title, category, subTasks, dueDate || null)
+    const created = await plannerService.addTodo(
+      title,
+      category,
+      subTasks,
+      dueDate || null,
+      startTime || null,
+      dueTime || null
+    )
     if (created) setTodos([created, ...todos])
+  }
+
+  const handleUpdateTodoSubmit = async (
+    id: string,
+    updates: {
+      title: string
+      category: string
+      due_date: string | null
+      start_time: string | null
+      due_time: string | null
+      sub_tasks: SubTask[]
+    }
+  ) => {
+    const updated = await plannerService.updateTodo(id, updates)
+    if (updated) {
+      setTodos((prev) => prev.map((t) => (t.id === id ? updated : t)))
+    }
   }
 
   // 드래그 앤 드롭
@@ -133,7 +188,18 @@ export default function TodosPage() {
 
   const handleDeletePermanently = async (id: string) => {
     const success = await plannerService.deleteTodoPermanently(id)
-    if (success) setTodos(todos.filter((t) => t.id !== id))
+    if (success) setTodos((prev) => prev.filter((t) => t.id !== id))
+  }
+
+  const handleClearCompletedTodos = async () => {
+    if (completedTodos.length === 0) return
+    if (!confirm(`완료된 항목 ${completedTodos.length}개를 모두 영구 삭제하시겠습니까?`)) {
+      return
+    }
+    const success = await plannerService.deleteCompletedTodos()
+    if (success) {
+      setTodos((prev) => prev.filter((t) => !t.completed))
+    }
   }
 
   const handleToggleSubTask = async (todo: Todo, subTaskId: string) => {
@@ -285,7 +351,19 @@ export default function TodosPage() {
                     <span className="font-bold text-xs px-3 py-1 bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 rounded-xl border border-indigo-200 dark:border-indigo-800">
                       {cat.name}
                     </span>
-                    <span className="text-xs text-slate-400 font-mono">{catTodos.length}개</span>
+
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-slate-400 font-mono">{catTodos.length}개</span>
+                      {/* 카테고리에 바로 추가 버튼 */}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenAddModal(cat.name)}
+                        title={`'${cat.name}'에 할 일 바로 추가`}
+                        className="p-1 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950 rounded-lg transition"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
 
                   <Droppable droppableId={cat.name}>
@@ -304,6 +382,8 @@ export default function TodosPage() {
                             toggleAccordion={toggleAccordion}
                             handleToggleComplete={handleToggleComplete}
                             handleToggleSubTask={handleToggleSubTask}
+                            onEdit={handleOpenEditModal}
+                            onDelete={handleDeletePermanently}
                           />
                         ))}
                         {provided.placeholder}
@@ -321,9 +401,19 @@ export default function TodosPage() {
               <h2 className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2 text-sm">
                 <CheckSquare className="w-4 h-4 text-indigo-500" /> 수집함 (미분류)
               </h2>
-              <span className="text-xs bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg font-mono">
-                {inboxTodos.length}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg font-mono">
+                  {inboxTodos.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleOpenAddModal('')}
+                  title="수집함에 할 일 바로 추가"
+                  className="p-1 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950 rounded-lg transition"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <Droppable droppableId="inbox">
@@ -340,21 +430,81 @@ export default function TodosPage() {
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           {...provided.dragHandleProps}
-                          className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:border-indigo-300 dark:hover:border-indigo-700 transition flex flex-col gap-2"
+                          className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm hover:border-indigo-300 dark:hover:border-indigo-700 transition flex flex-col gap-2 relative"
                         >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
                               <input
                                 type="checkbox"
                                 checked={todo.completed}
                                 onChange={() => handleToggleComplete(todo)}
                                 className="checkbox checkbox-xs checkbox-primary cursor-pointer"
                               />
-                              <span className="text-xs font-medium text-slate-800 dark:text-slate-100">
+                              <span className="text-xs font-medium text-slate-800 dark:text-slate-100 truncate">
                                 {todo.title}
                               </span>
                             </div>
+
+                            {/* 수집함 카드 점 3개 메뉴 */}
+                            <div
+                              className="relative shrink-0"
+                              onMouseDown={(e) => e.stopPropagation()}
+                            >
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setOpenInboxMenuId((prev) => (prev === todo.id ? null : todo.id))
+                                }}
+                                title="추가 작업"
+                                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition"
+                              >
+                                <MoreVertical className="w-3.5 h-3.5" />
+                              </button>
+
+                              {openInboxMenuId === todo.id && (
+                                <div className="absolute right-0 top-7 z-30 w-28 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-lg py-1 text-xs">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenInboxMenuId(null)
+                                      handleOpenEditModal(todo)
+                                    }}
+                                    className="w-full px-3 py-1.5 text-left flex items-center gap-2 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/70 transition"
+                                  >
+                                    <Pencil className="w-3 h-3 text-indigo-500" />
+                                    수정
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenInboxMenuId(null)
+                                      if (confirm(`'${todo.title}' 항목을 삭제하시겠습니까?`)) {
+                                        handleDeletePermanently(todo.id)
+                                      }
+                                    }}
+                                    className="w-full px-3 py-1.5 text-left flex items-center gap-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                    삭제
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </div>
+
+                          {(todo.start_time || todo.due_time) && (
+                            <div className="flex items-center gap-1 text-[11px] text-indigo-600 dark:text-indigo-400 font-mono">
+                              <Clock className="w-3 h-3" />
+                              <span>
+                                {todo.start_time && todo.due_time
+                                  ? `${todo.start_time} ~ ${todo.due_time}`
+                                  : todo.start_time
+                                    ? `${todo.start_time} 시작`
+                                    : `${todo.due_time} 마감`}
+                              </span>
+                            </div>
+                          )}
 
                           {todo.due_date && (
                             <div className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-mono">
@@ -389,13 +539,26 @@ export default function TodosPage() {
 
       {/* 완료 보관함 */}
       <section className="max-w-7xl mx-auto mt-8 border-t border-slate-200 dark:border-slate-800 pt-6">
-        <button
-          onClick={() => setShowCompleted(!showCompleted)}
-          className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition mb-4"
-        >
-          {showCompleted ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          완료된 항목 ({completedTodos.length}개)
-        </button>
+        <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={() => setShowCompleted(!showCompleted)}
+            className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition"
+          >
+            {showCompleted ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            완료된 항목 ({completedTodos.length}개)
+          </button>
+
+          {completedTodos.length > 0 && (
+            <button
+              type="button"
+              onClick={handleClearCompletedTodos}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-950 border border-rose-200/80 dark:border-rose-900 rounded-xl transition"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              완료 항목 전체 삭제
+            </button>
+          )}
+        </div>
 
         {showCompleted && (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -433,7 +596,7 @@ export default function TodosPage() {
 
       {/* 플로팅 + 버튼 */}
       <button
-        onClick={() => setIsModalOpen(true)}
+        onClick={() => handleOpenAddModal('')}
         className="fixed bottom-20 right-8 z-50 w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-2xl flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
         title="새 할 일 추가"
       >
@@ -443,9 +606,15 @@ export default function TodosPage() {
       {/* 모달 */}
       <TodoModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false)
+          setEditingTodo(null)
+        }}
         categories={categories}
+        initialCategory={modalInitialCategory}
+        editingTodo={editingTodo}
         onSubmit={handleAddTodoSubmit}
+        onUpdate={handleUpdateTodoSubmit}
       />
 
       <CategoryManageModal

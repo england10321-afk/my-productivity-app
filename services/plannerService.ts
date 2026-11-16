@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabaseClient'
-import { Todo, Category, Note } from '@/types'
+import { Todo, Category, Note, SubTask } from '@/types'
 
 // ==========================================
 // 1. 카테고리 (Categories)
@@ -108,7 +108,9 @@ export async function addTodo(
   title: string,
   category: string,
   subTasks: string[],
-  dueDate: string | null = null
+  dueDate: string | null = null,
+  startTime: string | null = null,
+  dueTime: string | null = null
 ): Promise<Todo | null> {
   try {
     const formattedSubTasks = subTasks.map((st, idx) => ({
@@ -124,6 +126,8 @@ export async function addTodo(
           title,
           category,
           due_date: dueDate,
+          start_time: startTime,
+          due_time: dueTime,
           sub_tasks: formattedSubTasks,
           completed: false,
         },
@@ -139,6 +143,37 @@ export async function addTodo(
     return data
   } catch (err) {
     console.error('addTodo unexpected error:', err)
+    return null
+  }
+}
+
+export async function updateTodo(
+  id: string,
+  updates: {
+    title: string
+    category: string
+    due_date: string | null
+    start_time: string | null
+    due_time: string | null
+    sub_tasks: SubTask[]
+  }
+): Promise<Todo | null> {
+  try {
+    const { data, error } = await supabase
+      .from('todos')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      alert(`[할 일 수정 실패]\n${error.message}`)
+      console.error('updateTodo error:', error)
+      return null
+    }
+    return data
+  } catch (err) {
+    console.error('updateTodo unexpected error:', err)
     return null
   }
 }
@@ -208,6 +243,22 @@ export async function deleteTodoPermanently(id: string): Promise<boolean> {
     return true
   } catch (err) {
     console.error('deleteTodoPermanently unexpected error:', err)
+    return false
+  }
+}
+
+export async function deleteCompletedTodos(): Promise<boolean> {
+  try {
+    const { error } = await supabase.from('todos').delete().eq('completed', true)
+
+    if (error) {
+      alert(`[완료 항목 일괄 삭제 실패]\n${error.message}`)
+      console.error('deleteCompletedTodos error:', error)
+      return false
+    }
+    return true
+  } catch (err) {
+    console.error('deleteCompletedTodos unexpected error:', err)
     return false
   }
 }
@@ -425,6 +476,8 @@ export async function importAllData(parsedData: any): Promise<boolean> {
         title: t.title,
         category: t.category,
         due_date: t.due_date,
+        start_time: t.start_time || null,
+        due_time: t.due_time || null,
         sub_tasks: t.sub_tasks || [],
         completed: t.completed || false,
       }))

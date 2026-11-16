@@ -11,6 +11,8 @@ export interface Todo {
   completed: boolean
   sub_tasks?: SubTask[]
   due_date?: string | null // YYYY-MM-DD 형식의 마감기한 (선택)
+  start_time?: string | null // HH:mm 형식의 시작시간 (선택)
+  due_time?: string | null // HH:mm 형식의 마감시간 (선택)
   created_at?: string
 }
 
