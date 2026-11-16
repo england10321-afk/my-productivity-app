@@ -34,6 +34,7 @@ export interface Note {
   title: string
   content: string
   category: string
+  is_pinned?: boolean
   created_at?: string
   updated_at?: string
 }

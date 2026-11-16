@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Plus, BookOpen, Trash2, Edit2, Search, Settings } from 'lucide-react'
+import { Plus, BookOpen, Trash2, Edit2, Search, Settings, Pin } from 'lucide-react'
 import { Note, Category } from '@/types'
 import * as plannerService from '@/services/plannerService'
 import NavigationDock from '@/components/NavigationDock'
@@ -21,19 +21,28 @@ export default function NotesPage() {
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false)
   const [isCatManageModalOpen, setIsCatManageModalOpen] = useState(false)
   const [editingNote, setEditingNote] = useState<Note | null>(null)
+  const [modalInitialMode, setModalInitialMode] = useState<'preview' | 'edit'>('preview')
 
   useEffect(() => {
     loadData()
   }, [])
 
-  // 💡 마운트 시 Supabase DB에서 노트 및 카테고리 목록 조회
+  // 상단 고정 우선 + 최신순 정렬 헬퍼
+  const sortNotesList = (list: Note[]) => {
+    return [...list].sort((a, b) => {
+      const pinDiff = Number(Boolean(b.is_pinned)) - Number(Boolean(a.is_pinned))
+      if (pinDiff !== 0) return pinDiff
+      return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+    })
+  }
+
   const loadData = async () => {
     setLoading(true)
     const [fetchedNotes, fetchedCats] = await Promise.all([
       plannerService.fetchNotes(),
       plannerService.fetchCategories('note'),
     ])
-    setNotes(fetchedNotes)
+    setNotes(sortNotesList(fetchedNotes))
     setCategories(fetchedCats)
     setLoading(false)
   }
@@ -43,27 +52,49 @@ export default function NotesPage() {
     title: string,
     category: string,
     content: string,
-    id?: string
+    id?: string,
+    isPinned?: boolean
   ) => {
     if (id) {
-      const updated = await plannerService.updateNote(id, title, category, content)
+      const updated = await plannerService.updateNote(id, title, category, content, isPinned)
       if (updated) {
-        setNotes((prev) => prev.map((n) => (n.id === id ? updated : n)))
+        setNotes((prev) => sortNotesList(prev.map((n) => (n.id === id ? updated : n))))
+        setEditingNote(updated)
       } else {
         alert('노트 수정 실패: Supabase DB 연결 및 테이블 상태를 확인하세요.')
       }
     } else {
-      const created = await plannerService.addNote(title, category, content)
+      const created = await plannerService.addNote(title, category, content, Boolean(isPinned))
       if (created) {
-        setNotes([created, ...notes])
+        setNotes((prev) => sortNotesList([created, ...prev]))
       } else {
         alert('노트 저장 실패: Supabase DB 연결 및 테이블 상태를 확인하세요.')
       }
     }
   }
 
+  // 상단 고정 토글
+  const handleTogglePin = async (e: React.MouseEvent, note: Note) => {
+    e.stopPropagation()
+    const currentPinned = Boolean(note.is_pinned)
+    const success = await plannerService.toggleNotePin(note.id, currentPinned)
+    if (success) {
+      setNotes((prev) =>
+        sortNotesList(
+          prev.map((n) => (n.id === note.id ? { ...n, is_pinned: !currentPinned } : n))
+        )
+      )
+    }
+  }
+
+  // 노트 내용을 할 일(Todo) 수집함으로 바로 추가
+  const handleSendLineToTodo = async (taskTitle: string) => {
+    await plannerService.addTodo(taskTitle, '', [], null, null, null)
+  }
+
   // 노트 삭제
-  const handleDeleteNote = async (id: string) => {
+  const handleDeleteNote = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation()
     if (!confirm('이 노트를 삭제하시겠습니까?')) return
     const success = await plannerService.deleteNote(id)
     if (success) {
@@ -123,7 +154,7 @@ export default function NotesPage() {
             <BookOpen className="w-6 h-6 text-indigo-500" /> 노트 보관함
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            아이디어, 프로젝트 메모, 중요한 내용을 안전하게 기록하고 관리하세요.
+            노트 카드를 클릭하면 전체 내용을 크게 보고 체크리스트를 관리할 수 있습니다.
           </p>
         </div>
 
@@ -196,18 +227,45 @@ export default function NotesPage() {
             {filteredNotes.map((note) => (
               <div
                 key={note.id}
-                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm hover:border-indigo-300 dark:hover:border-indigo-700 transition flex flex-col justify-between h-64"
+                onClick={() => {
+                  setEditingNote(note)
+                  setModalInitialMode('preview')
+                  setIsNoteModalOpen(true)
+                }}
+                className={`bg-white dark:bg-slate-900 rounded-2xl border p-5 shadow-sm hover:border-indigo-400 dark:hover:border-indigo-600 hover:shadow-md transition flex flex-col justify-between h-64 cursor-pointer ${
+                  note.is_pinned
+                    ? 'border-amber-300 dark:border-amber-800/80 ring-1 ring-amber-200/60 dark:ring-amber-900/40'
+                    : 'border-slate-200 dark:border-slate-800'
+                }`}
               >
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <h3 className="font-bold text-base text-slate-800 dark:text-slate-100 line-clamp-1">
-                      {note.title}
+                    <h3 className="font-bold text-base text-slate-800 dark:text-slate-100 line-clamp-1 flex items-center gap-1.5">
+                      {note.is_pinned && (
+                        <Pin className="w-3.5 h-3.5 text-amber-500 fill-amber-500 shrink-0" />
+                      )}
+                      <span className="truncate">{note.title}</span>
                     </h3>
-                    {note.category && (
-                      <span className="text-[10px] font-bold px-2.5 py-0.5 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900 rounded-lg shrink-0">
-                        {note.category}
-                      </span>
-                    )}
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {note.category && (
+                        <span className="text-[10px] font-bold px-2.5 py-0.5 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900 rounded-lg">
+                          {note.category}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => handleTogglePin(e, note)}
+                        title={note.is_pinned ? '상단 고정 해제' : '상단에 고정'}
+                        className={`p-1 rounded-lg transition cursor-pointer ${
+                          note.is_pinned
+                            ? 'text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/60'
+                            : 'text-slate-300 dark:text-slate-600 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        }`}
+                      >
+                        <Pin className={`w-3.5 h-3.5 ${note.is_pinned ? 'fill-amber-500' : ''}`} />
+                      </button>
+                    </div>
                   </div>
                   <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-6 whitespace-pre-wrap leading-relaxed">
                     {note.content || '내용이 없습니다.'}
@@ -222,17 +280,21 @@ export default function NotesPage() {
                   </span>
                   <div className="flex items-center gap-1">
                     <button
-                      onClick={() => {
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
                         setEditingNote(note)
+                        setModalInitialMode('edit')
                         setIsNoteModalOpen(true)
                       }}
-                      title="수정"
+                      title="바로 편집"
                       className="p-1.5 hover:bg-indigo-50 dark:hover:bg-indigo-950 text-slate-400 hover:text-indigo-600 rounded-lg transition cursor-pointer"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
                     <button
-                      onClick={() => handleDeleteNote(note.id)}
+                      type="button"
+                      onClick={(e) => handleDeleteNote(e, note.id)}
                       title="삭제"
                       className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950 text-slate-400 hover:text-red-500 rounded-lg transition cursor-pointer"
                     >
@@ -250,6 +312,7 @@ export default function NotesPage() {
       <button
         onClick={() => {
           setEditingNote(null)
+          setModalInitialMode('edit')
           setIsNoteModalOpen(true)
         }}
         className="fixed bottom-20 right-8 z-50 w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-2xl flex items-center justify-center transition-transform hover:scale-105 active:scale-95 cursor-pointer"
@@ -258,7 +321,7 @@ export default function NotesPage() {
         <Plus className="w-7 h-7" />
       </button>
 
-      {/* 노트 작성/수정 모달 */}
+      {/* 노트 작성/수정/보기 모달 */}
       <NoteModal
         isOpen={isNoteModalOpen}
         onClose={() => {
@@ -267,7 +330,9 @@ export default function NotesPage() {
         }}
         categories={categories}
         initialNote={editingNote}
+        initialMode={modalInitialMode}
         onSubmit={handleSaveNote}
+        onSendToTodo={handleSendLineToTodo}
       />
 
       {/* 카테고리 관리 모달 */}

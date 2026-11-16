@@ -272,6 +272,7 @@ export async function fetchNotes(): Promise<Note[]> {
     const { data, error } = await supabase
       .from('notes')
       .select('*')
+      .order('is_pinned', { ascending: false })
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -289,7 +290,8 @@ export async function fetchNotes(): Promise<Note[]> {
 export async function addNote(
   title: string,
   category: string,
-  content: string
+  content: string,
+  isPinned: boolean = false
 ): Promise<Note | null> {
   try {
     const { data, error } = await supabase
@@ -299,6 +301,7 @@ export async function addNote(
           title,
           category,
           content,
+          is_pinned: isPinned,
         },
       ])
       .select()
@@ -320,12 +323,23 @@ export async function updateNote(
   id: string,
   title: string,
   category: string,
-  content: string
+  content: string,
+  isPinned?: boolean
 ): Promise<Note | null> {
   try {
+    const payload: any = {
+      title,
+      category,
+      content,
+      updated_at: new Date().toISOString(),
+    }
+    if (typeof isPinned === 'boolean') {
+      payload.is_pinned = isPinned
+    }
+
     const { data, error } = await supabase
       .from('notes')
-      .update({ title, category, content, updated_at: new Date().toISOString() })
+      .update(payload)
       .eq('id', id)
       .select()
       .single()
@@ -339,6 +353,25 @@ export async function updateNote(
   } catch (err) {
     console.error('updateNote unexpected error:', err)
     return null
+  }
+}
+
+export async function toggleNotePin(id: string, currentPinned: boolean): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('notes')
+      .update({ is_pinned: !currentPinned })
+      .eq('id', id)
+
+    if (error) {
+      alert(`[노트 고정 변경 실패]\n${error.message}`)
+      console.error('toggleNotePin error:', error)
+      return false
+    }
+    return true
+  } catch (err) {
+    console.error('toggleNotePin unexpected error:', err)
+    return false
   }
 }
 
@@ -489,6 +522,7 @@ export async function importAllData(parsedData: any): Promise<boolean> {
         title: n.title,
         category: n.category,
         content: n.content,
+        is_pinned: n.is_pinned || false,
       }))
       await supabase.from('notes').insert(noteInserts)
     }
