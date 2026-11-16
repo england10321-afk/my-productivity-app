@@ -15,6 +15,7 @@ interface TodoModalProps {
   onClose: () => void
   categories: Category[]
   initialCategory?: string
+  initialDueDate?: string
   editingTodo?: Todo | null
   onSubmit: (
     title: string,
@@ -42,6 +43,7 @@ export default function TodoModal({
   onClose,
   categories,
   initialCategory = '',
+  initialDueDate = '',
   editingTodo = null,
   onSubmit,
   onUpdate,
@@ -54,7 +56,7 @@ export default function TodoModal({
   const [dueTime, setDueTime] = useState('')
   const [subInputs, setSubInputs] = useState<SubTaskDraft[]>([{ title: '', completed: false }])
 
-  // 모달이 열릴 때 추가/수정 모드 및 초기 카테고리 세팅
+  // 모달이 열릴 때 추가/수정 모드 및 초기 카테고리·날짜 세팅
   useEffect(() => {
     if (!isOpen) return
 
@@ -78,13 +80,13 @@ export default function TodoModal({
     } else {
       setTitle('')
       setSelectedCategory(initialCategory || '')
-      setDueDate('')
+      setDueDate(initialDueDate || '')
       setUseTimeSetting(false)
       setStartTime('')
       setDueTime('')
       setSubInputs([{ title: '', completed: false }])
     }
-  }, [isOpen, editingTodo, initialCategory])
+  }, [isOpen, editingTodo, initialCategory, initialDueDate])
 
   if (!isOpen) return null
 
